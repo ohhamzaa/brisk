@@ -9,7 +9,12 @@ namespace Brisk.Services;
 public sealed class SystemCounters : IDisposable
 {
     private IntPtr _query;
-    private IntPtr _diskIdle, _cpuPerf, _pagesIn;
+    private IntPtr _diskIdle, _cpuPerf, _pagesIn, _netRx, _netTx;
+
+    /// <summary>Bytes/s across all network adapters, from the last <see cref="Sample"/>.
+    /// (PDH costs ~0.1 ms here; .NET's NetworkInterface statistics cost ~20 ms per call.)</summary>
+    public double NetDown { get; private set; }
+    public double NetUp { get; private set; }
 
     public SystemCounters()
     {
@@ -17,6 +22,8 @@ public sealed class SystemCounters : IDisposable
         PdhAddEnglishCounter(_query, @"\PhysicalDisk(_Total)\% Idle Time", IntPtr.Zero, out _diskIdle);
         PdhAddEnglishCounter(_query, @"\Processor Information(_Total)\% Processor Performance", IntPtr.Zero, out _cpuPerf);
         PdhAddEnglishCounter(_query, @"\Memory\Pages Input/sec", IntPtr.Zero, out _pagesIn);
+        PdhAddEnglishCounter(_query, @"\Network Interface(*)\Bytes Received/sec", IntPtr.Zero, out _netRx);
+        PdhAddEnglishCounter(_query, @"\Network Interface(*)\Bytes Sent/sec", IntPtr.Zero, out _netTx);
         PdhCollectQueryData(_query); // rate counters need a first sample
     }
 
@@ -24,6 +31,8 @@ public sealed class SystemCounters : IDisposable
     public (double DiskBusy, double CpuPerf, double PagesInPerSec) Sample()
     {
         if (_query == IntPtr.Zero || PdhCollectQueryData(_query) != 0) return (double.NaN, double.NaN, double.NaN);
+        NetDown = GpuCounters.ReadArray(_netRx).Sum(x => x.Value);
+        NetUp = GpuCounters.ReadArray(_netTx).Sum(x => x.Value);
         double idle = Read(_diskIdle);
         return (double.IsNaN(idle) ? double.NaN : Math.Clamp(100 - idle, 0, 100), Read(_cpuPerf), Read(_pagesIn));
     }

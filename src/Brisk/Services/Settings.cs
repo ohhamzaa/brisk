@@ -8,6 +8,11 @@ public sealed class Settings
     /// <summary>Closing the window keeps Brisk in the tray so the lag recorder keeps running.</summary>
     public bool RecordInBackground { get; set; } = true;
     public bool TrayHintShown { get; set; }
+    /// <summary>Pop a notification the moment a slowdown is recorded.</summary>
+    public bool NotifyOnLag { get; set; } = true;
+    /// <summary>Ping the router and 1.1.1.1 to measure network lag (Brisk's only network traffic).</summary>
+    public bool NetworkChecks { get; set; } = true;
+    public bool FirstRunDone { get; set; }
 
     private static readonly string FilePath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Brisk", "settings.json");

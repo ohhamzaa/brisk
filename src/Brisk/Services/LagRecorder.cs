@@ -54,7 +54,14 @@ public sealed class LagRecorder
         s.Cpu >= 90
         || (!double.IsNaN(s.DiskBusy) && s.DiskBusy >= 90)
         || s.AvailPct <= 6
-        || (!double.IsNaN(s.PagesInPerSec) && s.PagesInPerSec >= 1500 && s.AvailPct <= 20);
+        || (!double.IsNaN(s.PagesInPerSec) && s.PagesInPerSec >= 1500 && s.AvailPct <= 20)
+        || IsNetHot(s) || IsVramHot(s);
+
+    // A GPU at 100% in a game is normal, so it isn't "lag" by itself; full VRAM and network spikes are.
+    private static bool IsNetHot(Sample s) =>
+        s.Net.Probing && (s.Net.InternetLoss >= 0.3 || (!double.IsNaN(s.Net.InternetMs) && s.Net.InternetMs >= 250)
+                          || (!double.IsNaN(s.Net.RouterMs) && s.Net.RouterMs >= 100));
+    private static bool IsVramHot(Sample s) => s.Gpu.VramTotal > 0 && s.Gpu.VramPct >= 97;
 
     /// <summary>Called by the monitor once per second (from its thread).</summary>
     public void Feed(Sample s)
@@ -90,14 +97,28 @@ public sealed class LagRecorder
 
         var diag = Diagnoser.Analyze(_window, ActivePlanName?.Invoke());
         var top = diag.Issues.FirstOrDefault(i => i.Kind != IssueKind.Space);
-        var culprits = Diagnoser.Aggregate(_window)
-            .OrderByDescending(c => c.Cpu * 1.0 + c.IoPerSec / (5 << 20) * 10 + c.FaultsPerSec / 20)
-            .Take(3).Select(c => c.Name).ToList();
+        // Rank by whatever actually caused this slowdown (mixing CPU %, MB/s and VRAM into one score
+        // let a big-but-idle app outrank the real culprit). The diagnosed culprit always comes first.
+        var all = Diagnoser.Aggregate(_window);
+        Func<Culprit, double> key = top?.Kind switch
+        {
+            IssueKind.Memory => c => c.FaultsPerSec * 1e6 + c.Memory,
+            IssueKind.Disk => c => c.IoPerSec,
+            IssueKind.Vram => c => c.Vram,
+            IssueKind.Gpu => c => c.Gpu,
+            _ => c => c.Cpu,
+        };
+        var culprits = all.OrderByDescending(key).Select(c => c.Name).ToList();
+        if (top?.Culprit is { } first) { culprits.Remove(first.Name); culprits.Insert(0, first.Name); }
+        culprits = culprits.Take(3).ToList();
+        if (top?.Kind == IssueKind.Network) culprits = top.Culprit != null ? [top.Culprit.Name] : [];
 
         var kinds = new List<string>();
         if (_peakCpu >= 90) kinds.Add("CPU");
         if (_peakMem >= 94 || _window.Any(w => w.PagesInPerSec >= 1500)) kinds.Add("Memory");
         if (_peakDisk >= 90) kinds.Add("Disk");
+        if (_window.Any(IsVramHot)) kinds.Add("GPU memory");
+        if (_window.Any(IsNetHot)) kinds.Add("Network");
 
         var ev = new LagEvent
         {

@@ -1,16 +1,19 @@
 namespace Brisk.Services;
 
-public enum IssueKind { Cpu, Memory, Disk, Throttle, Space }
-public enum FixKind { TrimApp, EndApp, FreeRam, HighPerformance, OpenStartup, OpenCleanup }
+public enum IssueKind { Cpu, Memory, Disk, Throttle, Space, Gpu, Vram, Network }
+public enum FixKind { TrimApp, EndApp, FreeRam, HighPerformance, OpenStartup, OpenCleanup, GameBoost }
 
 public sealed record FixAction(string Label, FixKind Kind, string? Target = null, string? TargetName = null);
 
-public sealed record Culprit(string Image, string Name, double Cpu, long Memory, double FaultsPerSec, double IoPerSec, int? SamplePid)
+public sealed record Culprit(string Image, string Name, double Cpu, long Memory, double FaultsPerSec, double IoPerSec, int? SamplePid,
+    double Gpu = 0, long Vram = 0)
 {
     public string Stats => string.Join("  ·  ", new[]
     {
         Cpu >= 1 ? $"CPU {Cpu:0}%" : null,
+        Gpu >= 1 ? $"GPU {Gpu:0}%" : null,
         Memory >= 50L << 20 ? $"RAM {Fmt.Bytes(Memory)}" : null,
+        Vram >= 100L << 20 ? $"VRAM {Fmt.Bytes(Vram)}" : null,
         IoPerSec >= 1 << 20 ? $"Disk {Fmt.Bytes(IoPerSec)}/s" : null,
         FaultsPerSec >= 20 ? $"Swapping {FaultsPerSec:0}/s" : null,
     }.Where(s => s != null));
@@ -18,7 +21,8 @@ public sealed record Culprit(string Image, string Name, double Cpu, long Memory,
 
 public sealed record Issue(IssueKind Kind, double Severity, string Headline, string Detail, Culprit? Culprit, IReadOnlyList<FixAction> Fixes);
 
-public sealed record Diagnosis(DateTime Time, IReadOnlyList<Issue> Issues, double AvgCpu, double MemUsed, double AvgDisk, double AvgPerf)
+public sealed record Diagnosis(DateTime Time, IReadOnlyList<Issue> Issues, double AvgCpu, double MemUsed, double AvgDisk, double AvgPerf,
+    double AvgGpu = double.NaN, double InternetMs = double.NaN)
 {
     public bool Healthy => Issues.Count == 0;
 }
@@ -37,6 +41,7 @@ public static class Diagnoser
         double avgDisk = Avg(samples.Select(s => s.DiskBusy));
         double avgPerf = Avg(samples.Select(s => s.CpuPerf));
         double avgPagesIn = Avg(samples.Select(s => s.PagesInPerSec));
+        double avgGpu = Avg(samples.Select(s => s.GpuPct));
         double minAvail = samples.Min(s => s.AvailPct);
         var last = samples[^1];
         var apps = Aggregate(samples);
@@ -93,6 +98,77 @@ public static class Diagnoser
                 c, fixes));
         }
 
+        // ---- GPU load ----
+        if (!double.IsNaN(avgGpu) && avgGpu >= 95)
+        {
+            var c = apps.MaxBy(a => a.Gpu);
+            if (c is { Gpu: < 20 }) c = null;
+            var fixes = new List<FixAction>();
+            bool looksLikeGame = c != null && AppNames.Classify(c.Image) == AppNames.Category.App;
+            if (c != null && !looksLikeGame && AppNames.CanOfferEnd(c.Image)) fixes.Add(new("End " + c.Name, FixKind.EndApp, c.Image, c.Name));
+            if (looksLikeGame) fixes.Add(new("Game boost", FixKind.GameBoost, c!.Image, c.Name));
+            issues.Add(new Issue(IssueKind.Gpu, Scale(avgGpu, 90, 100) * 0.8, // a maxed GPU in a game is often expected
+                c != null ? $"{c.Name} is maxing out your graphics card" : $"Your graphics card is maxed out ({avgGpu:0}%)",
+                (c != null ? $"Your GPU averaged {avgGpu:0}% and {c.Name} used {c.Gpu:0}% of it. " : $"Your GPU averaged {avgGpu:0}%. ")
+                + (looksLikeGame
+                    ? "If this is a game, that's normal at high settings. For smoother play, lower the graphics quality or cap the frame rate a little below your monitor's refresh rate."
+                    : c != null ? $"{c.Name} is using your graphics card heavily. If you aren't watching or playing something in it, close it." : ""),
+                c, fixes));
+        }
+
+        // ---- video memory ----
+        double vramPct = last.Gpu.VramTotal > 0 ? last.Gpu.VramPct : double.NaN;
+        if (!double.IsNaN(vramPct) && vramPct >= 92)
+        {
+            var byVram = apps.Where(a => a.Vram > 0).OrderByDescending(a => a.Vram).ToList();
+            var top = byVram.FirstOrDefault();
+            // Offer to close the *other* big VRAM user, not the game you're playing.
+            var other = byVram.Skip(1).FirstOrDefault(a => a.Vram >= 200L << 20 && AppNames.CanOfferEnd(a.Image));
+            var fixes = new List<FixAction>();
+            if (other != null) fixes.Add(new("End " + other.Name, FixKind.EndApp, other.Image, other.Name));
+            issues.Add(new Issue(IssueKind.Vram, Scale(vramPct, 88, 100),
+                "Your graphics memory is full",
+                $"{Fmt.Bytes(last.Gpu.VramUsed)} of {Fmt.Bytes(last.Gpu.VramTotal)} video memory is in use, so textures spill into normal RAM and games stutter. "
+                + (top != null ? $"{top.Name} uses {Fmt.Bytes(top.Vram)}. " : "")
+                + (other != null ? $"{other.Name} is also holding {Fmt.Bytes(other.Vram)}. " : "")
+                + "Lower texture quality, or close other apps that use the GPU (browsers, Discord, wallpaper apps).",
+                top, fixes));
+        }
+
+        // ---- network ----
+        var net = last.Net;
+        if (net.Probing)
+        {
+            double down = samples.Average(s => s.Net.DownBytesPerSec);
+            var hog = apps.Where(a => AppNames.Classify(a.Image) is AppNames.Category.Launcher or AppNames.Category.Update or AppNames.Category.Sync
+                                      && a.IoPerSec >= 1 << 20).MaxBy(a => a.IoPerSec);
+            string busy = down >= 2 << 20
+                ? $" Something is downloading at {Fmt.Bytes(down)}/s" + (hog != null ? $" (most likely {hog.Name})." : ".")
+                : "";
+            if (!double.IsNaN(net.RouterMs) && (net.RouterLoss >= 0.1 || net.RouterMs >= 30))
+            {
+                issues.Add(new Issue(IssueKind.Network, Math.Max(Scale(net.RouterMs, 20, 150), net.RouterLoss >= 0.1 ? 0.8 : 0),
+                    "Your Wi-Fi / router connection is unstable",
+                    $"Pings to your own router take {net.RouterMs:0} ms" + (net.RouterLoss > 0 ? $" and {net.RouterLoss:P0} are lost" : "")
+                    + ". On a healthy home network that's under 10 ms. Move closer to the router, switch to 5 GHz Wi-Fi or an Ethernet cable, or restart the router." + busy,
+                    hog, []));
+            }
+            else if (!double.IsNaN(net.InternetMs) && (net.InternetLoss >= 0.05 || net.InternetMs >= 120 || net.InternetJitter >= 30)
+                     || double.IsNaN(net.InternetMs) && net.InternetLoss >= 0.5)
+            {
+                string router = double.IsNaN(net.RouterMs) ? "" : $"Your router responds fine ({net.RouterMs:0} ms), but ";
+                issues.Add(new Issue(IssueKind.Network, Math.Max(Scale(net.InternetMs, 80, 300), net.InternetLoss >= 0.05 ? 0.7 : 0.3),
+                    double.IsNaN(net.InternetMs) ? "Your internet connection is down" : "Your internet connection is lagging",
+                    double.IsNaN(net.InternetMs)
+                        ? "Brisk can't reach the internet at all right now."
+                        : $"{router}the internet takes {net.InternetMs:0} ms" + (net.InternetLoss > 0 ? $" with {net.InternetLoss:P0} packet loss" : "")
+                          + (net.InternetJitter >= 30 ? $" and jumps around by {net.InternetJitter:0} ms" : "")
+                          + ". That's what makes games rubber-band and calls break up."
+                          + (busy.Length > 0 ? busy + " Pause it while you play." : " The problem is most likely on your internet provider's side."),
+                    hog, []));
+            }
+        }
+
         // ---- CPU held back (power plan / heat / battery) ----
         if (!double.IsNaN(avgPerf) && avgPerf < 70 && avgCpu >= 15)
         {
@@ -121,26 +197,28 @@ public static class Diagnoser
         }
 
         return new Diagnosis(DateTime.Now, issues.OrderByDescending(i => i.Severity).ToList(),
-            avgCpu, samples.Average(s => s.MemUsedPct), avgDisk, avgPerf);
+            avgCpu, samples.Average(s => s.MemUsedPct), avgDisk, avgPerf, avgGpu, net.InternetMs);
     }
 
-    /// <summary>Per-app averages across the window (CPU, swap, I/O) and peak memory.</summary>
+    /// <summary>Per-app averages across the window (CPU, GPU, swap, I/O) and peak memory / VRAM.</summary>
     public static List<Culprit> Aggregate(IReadOnlyList<Sample> samples)
     {
         int self = Environment.ProcessId;
-        var acc = new Dictionary<string, (double Cpu, double Faults, double Io, long Mem, int Pid)>(StringComparer.OrdinalIgnoreCase);
+        var acc = new Dictionary<string, (double Cpu, double Faults, double Io, long Mem, int Pid, double Gpu, long Vram)>(StringComparer.OrdinalIgnoreCase);
         foreach (var s in samples)
         {
             foreach (var g in s.Procs.Where(p => p.Pid != self).GroupBy(p => p.ImageName, StringComparer.OrdinalIgnoreCase))
             {
                 acc.TryGetValue(g.Key, out var a);
                 acc[g.Key] = (a.Cpu + g.Sum(p => p.CpuPercent), a.Faults + g.Sum(p => p.HardFaultsPerSec),
-                    a.Io + g.Sum(p => p.IoBytesPerSec), Math.Max(a.Mem, g.Sum(p => p.PrivateWorkingSet)), g.First().Pid);
+                    a.Io + g.Sum(p => p.IoBytesPerSec), Math.Max(a.Mem, g.Sum(p => p.PrivateWorkingSet)), g.First().Pid,
+                    a.Gpu + Math.Min(100, g.Sum(p => p.GpuPercent)), Math.Max(a.Vram, g.Sum(p => p.VramBytes)));
             }
         }
         int n = samples.Count;
         return acc.Select(kv => new Culprit(kv.Key, AppNames.Resolve(kv.Key, kv.Value.Pid),
-            kv.Value.Cpu / n, kv.Value.Mem, kv.Value.Faults / n, kv.Value.Io / n, kv.Value.Pid)).ToList();
+            kv.Value.Cpu / n, kv.Value.Mem, kv.Value.Faults / n, kv.Value.Io / n, kv.Value.Pid,
+            kv.Value.Gpu / n, kv.Value.Vram)).ToList();
     }
 
     private static double Avg(IEnumerable<double> xs)
@@ -149,5 +227,5 @@ public static class Diagnoser
         return v.Count == 0 ? double.NaN : v.Average();
     }
 
-    private static double Scale(double v, double lo, double hi) => Math.Clamp((v - lo) / (hi - lo), 0.05, 1);
+    private static double Scale(double v, double lo, double hi) => double.IsNaN(v) ? 0.3 : Math.Clamp((v - lo) / (hi - lo), 0.05, 1);
 }

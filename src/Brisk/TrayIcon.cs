@@ -24,9 +24,19 @@ public sealed class TrayIcon : IDisposable
             Visible = true,
         };
         _icon.MouseClick += (_, e) => { if (e.Button == WinForms.MouseButtons.Left) open(); };
+        _icon.BalloonTipClicked += OnBalloonClicked;
     }
 
-    public void Notify(string title, string text) => _icon.ShowBalloonTip(5000, title, text, WinForms.ToolTipIcon.None);
+    private Action? _onClick;
+
+    /// <summary>Shows a Windows notification. <paramref name="onClick"/> runs if the user clicks it.</summary>
+    public void Notify(string title, string text, Action? onClick = null)
+    {
+        _onClick = onClick;
+        _icon.ShowBalloonTip(6000, title, text.Length > 250 ? text[..247] + "…" : text, WinForms.ToolTipIcon.None);
+    }
+
+    private void OnBalloonClicked(object? sender, EventArgs e) => _onClick?.Invoke();
 
     public void Dispose()
     {

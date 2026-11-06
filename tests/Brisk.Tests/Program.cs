@@ -6,6 +6,30 @@ using Brisk;
 using Brisk.Services;
 using Microsoft.Win32;
 
+GameBoost.RecoverIfNeeded(); // never start from a leftover state file
+
+if (args.Contains("--bench"))
+{
+    // Cost of each piece of one monitor tick, in ms (averaged over 20 one-second ticks).
+    var sc = new ProcessScanner(); var sys = new SystemCounters(); var gpuC = new GpuCounters(); var net = new NetworkProbe();
+    var st = new SystemStats();
+    var t = new Dictionary<string, double> { ["cpu+mem"] = 0, ["pdh system"] = 0, ["gpu"] = 0, ["process scan"] = 0, ["net stats"] = 0, ["group+names"] = 0 };
+    for (int i = 0; i < 21; i++)
+    {
+        Thread.Sleep(1000);
+        var sw = Stopwatch.StartNew(); st.SampleCpu(); SystemStats.GetMemory(); var a = sw.Elapsed.TotalMilliseconds;
+        sw.Restart(); sys.Sample(); var b = sw.Elapsed.TotalMilliseconds;
+        sw.Restart(); gpuC.Sample(); var c = sw.Elapsed.TotalMilliseconds;
+        sw.Restart(); var benchProcs = sc.Scan(); var d = sw.Elapsed.TotalMilliseconds;
+        sw.Restart(); net.Sample(sys.NetDown, sys.NetUp); var e = sw.Elapsed.TotalMilliseconds;
+        sw.Restart(); Brisk.ViewModels.MemoryViewModel.BuildGroups(benchProcs); var f = sw.Elapsed.TotalMilliseconds;
+        if (i == 0) continue; // warm-up
+        t["cpu+mem"] += a / 20; t["pdh system"] += b / 20; t["gpu"] += c / 20; t["process scan"] += d / 20; t["net stats"] += e / 20; t["group+names"] += f / 20;
+    }
+    foreach (var (k, v) in t) Console.WriteLine($"{k,-14} {v,7:0.00} ms");
+    return 0;
+}
+
 int failed = 0;
 void Check(string name, bool ok)
 {
@@ -152,6 +176,44 @@ Check("diagnosis: power-saver throttling offers High performance",
 Check("diagnosis: no High performance fix when already on it",
     Diagnoser.Analyze(throttled, "High performance").Issues.Single(i => i.Kind == IssueKind.Throttle).Fixes.Count == 0);
 
+// GPU / VRAM / network rules
+GpuSnapshot Gpu(double util, long used, long total) => new(util, used, total, "Test GPU", new Dictionary<int, double>(), new Dictionary<int, long>());
+NetSnapshot Net(double routerMs, double routerLoss, double inetMs, double inetLoss, double jitter = 2, double down = 0) =>
+    new(routerMs, routerLoss, inetMs, inetLoss, jitter, down, 0, true);
+Sample WithGpuNet(Sample s, GpuSnapshot g, NetSnapshot n) => s with { Gpu = g, Net = n };
+
+var gpuGame = Enumerable.Range(0, 10).Select(_ => WithGpuNet(Synth(40, 50, 5, 100, 0, P(9101, "MyGame.exe", 30) with { GpuPercent = 98 }),
+    Gpu(99, 4L * GB, 8L * GB), Net(2, 0, 20, 0))).ToList();
+var dGpu = Diagnoser.Analyze(gpuGame);
+Check("diagnosis: maxed GPU names the game and offers Game boost, not End",
+    dGpu.Issues.SingleOrDefault(i => i.Kind == IssueKind.Gpu) is { Culprit.Image: "MyGame.exe" } gi
+    && gi.Fixes.Any(f => f.Kind == FixKind.GameBoost) && gi.Fixes.All(f => f.Kind != FixKind.EndApp));
+
+var vramFull = Enumerable.Range(0, 10).Select(_ => WithGpuNet(Synth(30, 50, 5, 100, 0,
+        P(9101, "MyGame.exe", 20) with { VramBytes = 6L * GB }, P(9102, "chrome.exe", 5) with { VramBytes = 1L * GB }),
+    Gpu(80, 7_800L << 20, 8L * GB), Net(2, 0, 20, 0))).ToList();
+var dVram = Diagnoser.Analyze(vramFull);
+Check("diagnosis: full VRAM offers to close the *other* app (Chrome), not the game",
+    dVram.Issues.SingleOrDefault(i => i.Kind == IssueKind.Vram) is { } vi && vi.Fixes.Any(f => f.Target == "chrome.exe")
+    && vi.Fixes.All(f => f.Target != "MyGame.exe"));
+
+var wifi = Enumerable.Range(0, 10).Select(_ => WithGpuNet(Synth(10, 60, 5, 100, 0), Gpu(5, 1L * GB, 8L * GB), Net(85, 0.2, 140, 0.2))).ToList();
+Check("diagnosis: slow router ping blames Wi-Fi, not the ISP",
+    Diagnoser.Analyze(wifi).Issues.SingleOrDefault(i => i.Kind == IssueKind.Network)?.Headline.Contains("Wi-Fi") == true);
+
+var isp = Enumerable.Range(0, 10).Select(_ => WithGpuNet(Synth(10, 60, 5, 100, 0), Gpu(5, 1L * GB, 8L * GB), Net(2, 0, 180, 0.08, 40))).ToList();
+var dIsp = Diagnoser.Analyze(isp);
+Check("diagnosis: fast router + slow internet = internet lag",
+    dIsp.Issues.SingleOrDefault(i => i.Kind == IssueKind.Network) is { } ni && ni.Headline.Contains("internet") && ni.Detail.Contains("router responds fine"));
+
+var download = Enumerable.Range(0, 10).Select(_ => WithGpuNet(Synth(10, 60, 5, 100, 0, P(9103, "steam.exe", 2, io: 30 << 20)),
+    Gpu(5, 1L * GB, 8L * GB), Net(2, 0, 160, 0, 10, 25 << 20))).ToList();
+Check("diagnosis: names the likely downloader (Steam) when the line is saturated",
+    Diagnoser.Analyze(download).Issues.SingleOrDefault(i => i.Kind == IssueKind.Network)?.Detail.Contains("steam") == true);
+
+var goodNet = Enumerable.Range(0, 10).Select(_ => WithGpuNet(Synth(10, 60, 5, 100, 0), Gpu(30, 2L * GB, 8L * GB), Net(2, 0, 18, 0))).ToList();
+Check("diagnosis: healthy GPU + network = healthy", Diagnoser.Analyze(goodNet).Healthy);
+
 // ---------- 6. Lag recorder (temp file, never the real history) ----------
 var histPath = Path.Combine(Path.GetTempPath(), "brisk-hist-" + Guid.NewGuid().ToString("N")[..6] + ".json");
 try
@@ -168,10 +230,74 @@ try
     Check($"recorder: an 8-second freeze is recorded with its cause ({got?.Headline})",
         got != null && got.Seconds >= 8 && got.Culprits.FirstOrDefault() == "game" && got.Kinds.Contains("CPU"));
     Check("recorder: history persisted and reloads", new LagRecorder(histPath).Events.Count == 1);
+
+    got = null;
+    foreach (var _ in Enumerable.Range(0, 7)) rec.Feed(WithGpuNet(Synth(10, 60, 5, 100, 0), Gpu(5, 1L * GB, 8L * GB), Net(2, 0, 420, 0.4)));
+    foreach (var _ in Enumerable.Range(0, 4)) rec.Feed(WithGpuNet(Synth(10, 60, 5, 100, 0), Gpu(5, 1L * GB, 8L * GB), Net(2, 0, 18, 0)));
+    Check($"recorder: a 7-second network lag spike is recorded as Network ({got?.Headline})",
+        got != null && got.Kinds.SequenceEqual(["Network"]));
 }
 finally { File.Delete(histPath); }
 
-// ---------- 7. Power plan parsing ----------
+// ---------- 7. Game boost on two throwaway processes (never your apps, never your power plan) ----------
+Process Dummy() => Process.Start(new ProcessStartInfo("powershell.exe", "-NoProfile -Command Start-Sleep 60")
+    { CreateNoWindow = true, UseShellExecute = false })!;
+var game = Dummy();
+var bg = Dummy();
+try
+{
+    Thread.Sleep(800);
+    var myProcs = new List<ProcInfo>
+    {
+        new(game.Id, "game-test.exe", 50 << 20, 40, game.SessionId, 0, 0),
+        new(bg.Id, "background-test.exe", 50 << 20, 2, bg.SessionId, 0, 0),
+    };
+    var boost = new GameBoost();
+    var report = boost.Start(game.Id, myProcs, plans: []); // empty plan list: power plan is not touched
+    game.Refresh(); bg.Refresh();
+    Check($"boost: game raised to AboveNormal ({game.PriorityClass})", game.PriorityClass == ProcessPriorityClass.AboveNormal);
+    Check($"boost: background lowered to BelowNormal ({bg.PriorityClass})", bg.PriorityClass == ProcessPriorityClass.BelowNormal);
+    Check("boost: reports 1 throttled app and no plan change", report.Throttled == 1 && report.PlanName == null);
+    Check("boost: game still running is detected", boost.GameStillRunning());
+
+    int restored = boost.Stop();
+    game.Refresh(); bg.Refresh();
+    Check($"boost: stop restores both ({restored} apps, {game.PriorityClass}/{bg.PriorityClass})",
+        restored == 1 && game.PriorityClass == ProcessPriorityClass.Normal && bg.PriorityClass == ProcessPriorityClass.Normal);
+
+    // Crash recovery: start a boost, "lose" the object, recover from the state file.
+    new GameBoost().Start(game.Id, myProcs, plans: []);
+    bg.Refresh();
+    bool lowered = bg.PriorityClass == ProcessPriorityClass.BelowNormal;
+    int recovered = GameBoost.RecoverIfNeeded();
+    bg.Refresh();
+    Check($"boost: recovers after a crash from the saved state ({recovered})", lowered && recovered == 1 && bg.PriorityClass == ProcessPriorityClass.Normal);
+    Check("boost: nothing left to recover afterwards", GameBoost.RecoverIfNeeded() == 0);
+
+    game.Kill(); game.WaitForExit();
+    var b2 = new GameBoost();
+    b2.Start(bg.Id, myProcs.Where(p => p.Pid == bg.Id).ToList(), plans: []);
+    bool before = b2.GameStillRunning();
+    bg.Kill(); bg.WaitForExit();
+    Check("boost: notices when the game is gone (true while running, false after exit)", before && !b2.GameStillRunning());
+    b2.Stop();
+}
+finally
+{
+    foreach (var p in new[] { game, bg }) { try { if (!p.HasExited) p.Kill(); } catch { } }
+    GameBoost.RecoverIfNeeded();
+}
+
+// ---------- 8. GPU counters on this PC ----------
+using (var gc = new GpuCounters())
+{
+    gc.Sample(); Thread.Sleep(1100);
+    var gs = gc.Sample();
+    Check($"gpu: counters readable ({gs.Name ?? "no name"}, {gs.Utilization:0}% load, {Fmt.Bytes(gs.VramUsed)} / {Fmt.Bytes(gs.VramTotal)} VRAM, {gs.PerPidUtil.Count} processes)",
+        !gc.Available || (!double.IsNaN(gs.Utilization) && gs.VramTotal > 0));
+}
+
+// ---------- 9. Power plan parsing ----------
 var plans = PowerPlans.List();
 Check($"power plans parsed ({plans.Count}), exactly one active", plans.Count > 0 && plans.Count(p => p.Active) == 1);
 Check("no plan name has unbalanced parentheses", plans.All(p => p.Name.Count(c => c == '(') == p.Name.Count(c => c == ')')));

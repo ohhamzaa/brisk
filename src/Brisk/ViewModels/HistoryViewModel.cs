@@ -63,6 +63,41 @@ public sealed class HistoryViewModel : ObservableObject
         }
     }
 
+    public bool NotifyOnLag
+    {
+        get => _main.Settings.NotifyOnLag;
+        set { _main.Settings.NotifyOnLag = value; _main.Settings.Save(); Raise(); }
+    }
+
+    public bool NetworkChecks
+    {
+        get => _main.Settings.NetworkChecks;
+        set
+        {
+            _main.Settings.NetworkChecks = value; _main.Settings.Save();
+            _main.Monitor.Network.Enabled = value;
+            Raise();
+            _main.ShowToast(value ? "Brisk will ping your router and 1.1.1.1 to spot lag." : "Network checks are off. Brisk sends nothing over the network now.");
+        }
+    }
+
+    /// <summary>First-run choices, applied without a toast for each one.</summary>
+    public void ApplyWelcome(bool record, bool startWithWindows, bool notify, bool network)
+    {
+        _main.Settings.RecordInBackground = record;
+        _main.Recorder.Enabled = record;
+        _main.Settings.NotifyOnLag = notify;
+        _main.Settings.NetworkChecks = network;
+        _main.Monitor.Network.Enabled = network;
+        _main.Settings.Save();
+        try { Settings.StartWithWindows = startWithWindows; } catch { }
+        Raise(nameof(RecordInBackground)); Raise(nameof(StartWithWindows)); Raise(nameof(NotifyOnLag)); Raise(nameof(NetworkChecks));
+    }
+
+    private IReadOnlyList<LagEvent> _timeline = [];
+    /// <summary>Last 7 days, for the timeline chart.</summary>
+    public IReadOnlyList<LagEvent> Timeline { get => _timeline; private set => Set(ref _timeline, value); }
+
     public RelayCommand ClearCommand { get; }
 
     public HistoryViewModel(MainViewModel main)
@@ -91,7 +126,8 @@ public sealed class HistoryViewModel : ObservableObject
     {
         Raise(nameof(IsEmpty));
         System.Windows.Input.CommandManager.InvalidateRequerySuggested();
-        var week = Events.Where(e => e.Event.Start >= DateTime.Now.AddDays(-7)).ToList();
+        var week = Events.Where(e => e.Event.Start >= DateTime.Today.AddDays(-6)).ToList();
+        Timeline = week.Select(e => e.Event).ToList();
         if (Events.Count == 0)
         {
             Summary = "No slowdowns recorded yet";

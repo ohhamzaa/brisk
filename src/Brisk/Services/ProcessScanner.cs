@@ -9,8 +9,10 @@ namespace Brisk.Services;
 /// <param name="CpuPercent">Share of total CPU since the previous scan.</param>
 /// <param name="HardFaultsPerSec">Pages Windows had to read back from disk for this process: swapping.</param>
 /// <param name="IoBytesPerSec">Bytes read + written per second (files, disk, devices).</param>
+/// <param name="GpuPercent">Busiest GPU engine this process uses (filled in by the monitor).</param>
+/// <param name="VramBytes">Dedicated video memory this process holds (filled in by the monitor).</param>
 public sealed record ProcInfo(int Pid, string ImageName, long PrivateWorkingSet, double CpuPercent, int SessionId,
-    double HardFaultsPerSec, double IoBytesPerSec);
+    double HardFaultsPerSec, double IoBytesPerSec, double GpuPercent = 0, long VramBytes = 0);
 
 /// <summary>
 /// Reads every process in one NtQuerySystemInformation call (what Task Manager does).

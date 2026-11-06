@@ -123,6 +123,7 @@ public sealed class DashboardViewModel : ObservableObject
             // Start with a flat line at the current value so the graph spans the card from the first second.
             for (int i = 0; i < HistoryLength - 1; i++) { _cpuHist.Enqueue(cpu); _ramHist.Enqueue(Ram); }
         }
+        UpdateGpuNet(s);
         Push(_cpuHist, cpu); CpuHistory = _cpuHist.ToArray();
         Push(_ramHist, Ram); RamHistory = _ramHist.ToArray();
 
@@ -185,6 +186,54 @@ public sealed class DashboardViewModel : ObservableObject
 
         Tips.Clear();
         foreach (var t in tips) Tips.Add(t);
+    }
+
+    public Task ReloadPlans() => LoadPlans();
+
+    // ---------- GPU + network strip ----------
+    private string _gpuText = "-", _gpuSub = "", _vramText = "-", _vramSub = "", _pingText = "-", _pingSub = "", _trafficText = "-", _trafficSub = "";
+    public string GpuText { get => _gpuText; private set => Set(ref _gpuText, value); }
+    public string GpuSub { get => _gpuSub; private set => Set(ref _gpuSub, value); }
+    public string VramText { get => _vramText; private set => Set(ref _vramText, value); }
+    public string VramSub { get => _vramSub; private set => Set(ref _vramSub, value); }
+    public string PingText { get => _pingText; private set => Set(ref _pingText, value); }
+    public string PingSub { get => _pingSub; private set => Set(ref _pingSub, value); }
+    public string TrafficText { get => _trafficText; private set => Set(ref _trafficText, value); }
+    public string TrafficSub { get => _trafficSub; private set => Set(ref _trafficSub, value); }
+
+    private string _pingLevel = "ok";
+    /// <summary>ok / warn / danger, colours the ping tile.</summary>
+    public string PingLevel { get => _pingLevel; private set => Set(ref _pingLevel, value); }
+
+    private double _gpu;
+    public double Gpu { get => _gpu; private set => Set(ref _gpu, value); }
+
+    private void UpdateGpuNet(Sample s)
+    {
+        if (double.IsNaN(s.GpuPct)) { GpuText = "n/a"; GpuSub = "No GPU counters"; }
+        else
+        {
+            Gpu = s.GpuPct;
+            GpuText = $"{s.GpuPct:0}%";
+            var top = s.Procs.Where(p => p.Pid != Environment.ProcessId).MaxBy(p => p.GpuPercent);
+            GpuSub = top is { GpuPercent: >= 3 } ? $"{AppNames.Resolve(top.ImageName, top.Pid)} {top.GpuPercent:0}%" : s.Gpu.Name ?? "Idle";
+        }
+        if (s.Gpu.VramTotal > 0)
+        {
+            VramText = $"{Fmt.Gb(s.Gpu.VramUsed)} / {Fmt.Gb(s.Gpu.VramTotal)} GB";
+            VramSub = $"{s.Gpu.VramPct:0}% of video memory";
+        }
+        var n = s.Net;
+        if (!n.Probing) { PingText = "-"; PingSub = _main.Settings.NetworkChecks ? "Measuring…" : "Network checks off"; PingLevel = "ok"; }
+        else if (double.IsNaN(n.InternetMs)) { PingText = "Offline"; PingSub = "Can't reach the internet"; PingLevel = "danger"; }
+        else
+        {
+            PingText = $"{n.InternetMs:0} ms";
+            PingSub = (double.IsNaN(n.RouterMs) ? "" : $"Router {n.RouterMs:0} ms  ·  ") + (n.InternetLoss > 0 ? $"{n.InternetLoss:P0} lost" : $"jitter {n.InternetJitter:0} ms");
+            PingLevel = n.InternetLoss >= 0.05 || n.InternetMs >= 120 ? "danger" : n.InternetMs >= 60 || n.InternetJitter >= 20 ? "warn" : "ok";
+        }
+        TrafficText = $"↓ {Fmt.Bytes(n.DownBytesPerSec)}/s";
+        TrafficSub = $"↑ {Fmt.Bytes(n.UpBytesPerSec)}/s";
     }
 
     private async Task LoadPlans()

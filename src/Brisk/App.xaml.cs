@@ -40,6 +40,8 @@ public partial class App : Application
 
         var window = new MainWindow();
         MainWindow = window;
+        // For scripted screenshots/tests: open without stealing keyboard focus from whatever you're typing in.
+        if (e.Args.Contains("--no-activate", StringComparer.OrdinalIgnoreCase)) window.ShowActivated = false;
         if (!tray) window.Show();
     }
 

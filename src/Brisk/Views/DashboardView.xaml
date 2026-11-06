@@ -143,6 +143,52 @@
                 </Border>
             </UniformGrid>
 
+            <!-- GPU + network strip -->
+            <Border Style="{StaticResource Card}" Margin="0,12,0,0" Padding="6,12" c:Anim.Delay="200">
+                <UniformGrid Columns="4">
+                    <UniformGrid.Resources>
+                        <Style x:Key="TileSep" TargetType="Border">
+                            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+                            <Setter Property="BorderThickness" Value="0,0,1,0" />
+                            <Setter Property="Padding" Value="14,2" />
+                        </Style>
+                    </UniformGrid.Resources>
+                    <Border Style="{StaticResource TileSep}">
+                        <StackPanel>
+                            <TextBlock Text="GRAPHICS" Style="{StaticResource Label}" />
+                            <TextBlock Text="{Binding GpuText}" Style="{StaticResource H2}" FontSize="17" Margin="0,5,0,0" />
+                            <TextBlock Text="{Binding GpuSub}" Style="{StaticResource Dim}" FontSize="11.5" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource TileSep}">
+                        <StackPanel>
+                            <TextBlock Text="VIDEO MEMORY" Style="{StaticResource Label}" />
+                            <TextBlock Text="{Binding VramText}" Style="{StaticResource H2}" FontSize="17" Margin="0,5,0,0" />
+                            <TextBlock Text="{Binding VramSub}" Style="{StaticResource Dim}" FontSize="11.5" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource TileSep}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="7" Height="7" Margin="0,0,7,0" VerticalAlignment="Center"
+                                         Fill="{Binding PingLevel, Converter={StaticResource LevelBrush}}" />
+                                <TextBlock Text="PING" Style="{StaticResource Label}" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding PingText}" Style="{StaticResource H2}" FontSize="17" Margin="0,5,0,0" />
+                            <TextBlock Text="{Binding PingSub}" Style="{StaticResource Dim}" FontSize="11.5" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                       ToolTip="Internet ping goes to 1.1.1.1. Router ping shows whether lag is on your Wi-Fi or with your provider." />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource TileSep}" BorderThickness="0">
+                        <StackPanel>
+                            <TextBlock Text="NETWORK" Style="{StaticResource Label}" />
+                            <TextBlock Text="{Binding TrafficText}" Style="{StaticResource H2}" FontSize="17" Margin="0,5,0,0" />
+                            <TextBlock Text="{Binding TrafficSub}" Style="{StaticResource Dim}" FontSize="11.5" />
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+            </Border>
+
             <!-- tips + top apps -->
             <Grid Margin="0,12,0,0">
                 <Grid.ColumnDefinitions>

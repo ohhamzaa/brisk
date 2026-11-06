@@ -24,6 +24,7 @@
         <DataTemplate DataType="{x:Type vm:CleanupViewModel}"><views:CleanupView /></DataTemplate>
         <DataTemplate DataType="{x:Type vm:DiagnoseViewModel}"><views:DiagnoseView /></DataTemplate>
         <DataTemplate DataType="{x:Type vm:HistoryViewModel}"><views:HistoryView /></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:BoostViewModel}"><views:BoostView /></DataTemplate>
     </Window.Resources>
 
     <Grid x:Name="Root">
@@ -72,6 +73,9 @@
                     <RadioButton Style="{StaticResource NavItem}" Content="Why so slow?" Tag="&#xE9D9;"
                                  Command="{Binding NavigateCommand}" CommandParameter="Diagnose"
                                  IsChecked="{Binding Page, Mode=OneWay, Converter={StaticResource EnumEquals}, ConverterParameter=Diagnose}" />
+                    <RadioButton Style="{StaticResource NavItem}" Content="Game boost" Tag="&#xE7FC;"
+                                 Command="{Binding NavigateCommand}" CommandParameter="Boost"
+                                 IsChecked="{Binding Page, Mode=OneWay, Converter={StaticResource EnumEquals}, ConverterParameter=Boost}" />
                     <RadioButton Style="{StaticResource NavItem}" Content="Memory" Tag="&#xE964;"
                                  Command="{Binding NavigateCommand}" CommandParameter="Memory"
                                  IsChecked="{Binding Page, Mode=OneWay, Converter={StaticResource EnumEquals}, ConverterParameter=Memory}" />
@@ -118,6 +122,62 @@
                 <TextBlock Text="{Binding Toast}" Foreground="{StaticResource TextBrush}" FontSize="13" TextWrapping="Wrap" MaxWidth="500" />
             </StackPanel>
         </Border>
+
+        <!-- ===== first-run welcome ===== -->
+        <Grid Grid.ColumnSpan="2" Background="#D9070809" Visibility="{Binding Welcome, Converter={StaticResource Visible}}">
+            <Border Width="560" Style="{StaticResource Card}" Padding="34,30" Background="{StaticResource SurfaceBrush}"
+                    VerticalAlignment="Center" HorizontalAlignment="Center" DataContext="{Binding Welcome}" c:Anim.Pop="True">
+                <StackPanel>
+                    <Border Width="56" Height="56" CornerRadius="14" Background="#090B0C" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                            HorizontalAlignment="Left">
+                        <Path Style="{StaticResource PulseLine}" c:Loop.Kind="heartbeat" StrokeThickness="2.4" Margin="11,15" />
+                    </Border>
+                    <TextBlock Text="Welcome to Brisk" Style="{StaticResource H1}" Margin="0,18,0,0" />
+                    <TextBlock Style="{StaticResource Dim}" FontSize="13.5" Margin="0,6,0,22"
+                               Text="Brisk tells you exactly why your PC is slow, and remembers every freeze so you're never left guessing. Pick how it should work:" />
+
+                    <DockPanel Margin="0,0,0,14">
+                        <CheckBox DockPanel.Dock="Right" Style="{StaticResource Switch}" IsChecked="{Binding Record}" VerticalAlignment="Center" />
+                        <StackPanel Margin="0,0,16,0">
+                            <TextBlock Text="Record slowdowns in the background" Style="{StaticResource H2}" FontSize="13.5" />
+                            <TextBlock Text="Stays in the tray when closed. Uses about 0.1% CPU." Style="{StaticResource Dim}" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </DockPanel>
+                    <DockPanel Margin="0,0,0,14">
+                        <CheckBox DockPanel.Dock="Right" Style="{StaticResource Switch}" IsChecked="{Binding StartWithWindows}" VerticalAlignment="Center" />
+                        <StackPanel Margin="0,0,16,0">
+                            <TextBlock Text="Start with Windows" Style="{StaticResource H2}" FontSize="13.5" />
+                            <TextBlock Text="So the black box is always on, even if you forget to open Brisk." Style="{StaticResource Dim}" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </DockPanel>
+                    <DockPanel Margin="0,0,0,14">
+                        <CheckBox DockPanel.Dock="Right" Style="{StaticResource Switch}" IsChecked="{Binding Notify}" VerticalAlignment="Center" />
+                        <StackPanel Margin="0,0,16,0">
+                            <TextBlock Text="Alert me when my PC struggles" Style="{StaticResource H2}" FontSize="13.5" />
+                            <TextBlock Text="A quiet notification naming the cause, at most every 10 minutes." Style="{StaticResource Dim}" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </DockPanel>
+                    <DockPanel Margin="0,0,0,26">
+                        <CheckBox DockPanel.Dock="Right" Style="{StaticResource Switch}" IsChecked="{Binding NetworkChecks}" VerticalAlignment="Center" />
+                        <StackPanel Margin="0,0,16,0">
+                            <TextBlock Text="Watch network lag" Style="{StaticResource H2}" FontSize="13.5" />
+                            <TextBlock Text="Pings your router and 1.1.1.1. That's the only network traffic Brisk ever sends." Style="{StaticResource Dim}" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </DockPanel>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Just look around" Style="{StaticResource BaseButton}" Command="{Binding DoneCommand}" Margin="0,0,8,0"
+                                AutomationProperties.Name="Just look around" />
+                        <Button Style="{StaticResource PrimaryButton}" Command="{Binding DiagnoseCommand}" AutomationProperties.Name="Check my PC now">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE9D9;" Style="{StaticResource Icon}" FontSize="13" Margin="0,0,8,0" />
+                                <TextBlock Text="Check my PC now" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
 
         <!-- ===== confirm dialog ===== -->
         <Grid Grid.ColumnSpan="2" Background="#B3000000"

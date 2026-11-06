@@ -23,6 +23,9 @@ public sealed class IssueVm
         IssueKind.Memory => "MEMORY",
         IssueKind.Disk => "DISK",
         IssueKind.Throttle => "CPU SPEED",
+        IssueKind.Gpu => "GRAPHICS",
+        IssueKind.Vram => "VIDEO MEMORY",
+        IssueKind.Network => "NETWORK",
         _ => "STORAGE",
     };
     public System.Windows.Media.ImageSource? CulpritIcon { get; init; }
@@ -100,7 +103,9 @@ public sealed class DiagnoseViewModel : ObservableObject
         int n;
         lock (_gate) { _samples.Add(s); n = _samples.Count; }
         string disk = double.IsNaN(s.DiskBusy) ? "" : $"   ·   Disk {s.DiskBusy:0}%";
-        string live = $"CPU {s.Cpu:0}%   ·   Memory {s.MemUsedPct:0}%{disk}";
+        string gpu = double.IsNaN(s.GpuPct) ? "" : $"   ·   GPU {s.GpuPct:0}%";
+        string ping = s.Net.Probing && !double.IsNaN(s.Net.InternetMs) ? $"   ·   Ping {s.Net.InternetMs:0} ms" : "";
+        string live = $"CPU {s.Cpu:0}%   ·   Memory {s.MemUsedPct:0}%{disk}{gpu}{ping}";
         MainViewModel.Ui(() =>
         {
             Progress = Math.Min(1, n / (double)Seconds);
@@ -124,12 +129,14 @@ public sealed class DiagnoseViewModel : ObservableObject
         Healthy = d.Healthy;
         string disk = double.IsNaN(d.AvgDisk) ? "" : $"  ·  disk {d.AvgDisk:0}% busy";
         string speed = double.IsNaN(d.AvgPerf) ? "" : $"  ·  CPU speed {d.AvgPerf:0}%";
-        Summary = $"Average over {Seconds}s: CPU {d.AvgCpu:0}%  ·  memory {d.MemUsed:0}% used{disk}{speed}";
+        string gpu = double.IsNaN(d.AvgGpu) ? "" : $"  ·  GPU {d.AvgGpu:0}%";
+        string ping = double.IsNaN(d.InternetMs) ? "" : $"  ·  ping {d.InternetMs:0} ms";
+        Summary = $"Average over {Seconds}s: CPU {d.AvgCpu:0}%  ·  memory {d.MemUsed:0}% used{disk}{gpu}{speed}{ping}";
 
         if (d.Healthy)
         {
             Verdict = "Nothing is slowing your PC down right now";
-            VerdictDetail = "CPU, memory and disk all have room to spare. If it felt slow earlier, the lag history shows what happened. "
+            VerdictDetail = "CPU, memory, disk, graphics and network all look fine. If it felt slow earlier, the lag history shows what happened. "
                           + "Tip: run this while the PC actually feels slow.";
         }
         else
@@ -159,6 +166,7 @@ public sealed class DiagnoseViewModel : ObservableObject
             case FixKind.HighPerformance: await _main.Dashboard.SetHighPerformanceAsync(); break;
             case FixKind.OpenStartup: _main.Page = Page.Startup; break;
             case FixKind.OpenCleanup: _main.Page = Page.Cleanup; _main.Cleanup.ScanCommand.Execute(null); break;
+            case FixKind.GameBoost: _main.BoostPage.OpenFor(f.Target ?? ""); break;
         }
     }
 }

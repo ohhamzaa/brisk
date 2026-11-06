@@ -23,7 +23,8 @@
   </PropertyGroup>
 
   <!-- dotnet publish -c Release -r win-x64 => one self-contained Brisk.exe -->
-  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+  <!-- Only when publishing: a self-contained exe can't be referenced by the test project in a Release build. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' And '$(_IsPublishing)' == 'true'">
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>

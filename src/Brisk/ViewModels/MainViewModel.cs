@@ -4,29 +4,38 @@ using Brisk.Services;
 
 namespace Brisk.ViewModels;
 
-public enum Page { Dashboard, Diagnose, Memory, Startup, Cleanup, History }
+public enum Page { Dashboard, Diagnose, Boost, Memory, Startup, Cleanup, History }
 
 public sealed class MainViewModel : ObservableObject, IDisposable
 {
     private int _tick;
     private int _groupBusy;
+    private DateTime _lastAlert = DateTime.MinValue;
+    private int _boostCheck;
 
     public SystemMonitor Monitor { get; } = new();
     public LagRecorder Recorder { get; } = new();
+    public GameBoost Boost { get; } = new();
     public Settings Settings { get; } = Settings.Load();
 
     public DashboardViewModel Dashboard { get; }
     public DiagnoseViewModel Diagnose { get; }
+    public BoostViewModel BoostPage { get; }
     public MemoryViewModel Memory { get; }
     public StartupViewModel Startup { get; }
     public CleanupViewModel Cleanup { get; }
     public HistoryViewModel History { get; }
+    public WelcomeViewModel? Welcome { get => _welcome; private set => Set(ref _welcome, value); }
+    private WelcomeViewModel? _welcome;
 
     public bool IsAdmin { get; } = SystemStats.IsAdmin;
     public string Version { get; } = "v" + (typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "0.1.0");
 
     /// <summary>Set by the window. When false (minimised to tray) Brisk skips all UI work and only records.</summary>
     public volatile bool UiActive = true;
+
+    /// <summary>Tray notification request: title, text, page to open when clicked.</summary>
+    public event Action<string, string, Page>? Notify;
 
     private Page _page = Page.Dashboard;
     public Page Page
@@ -37,12 +46,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             if (!Set(ref _page, value)) return;
             Raise(nameof(CurrentView));
             if (value == Page.Startup && Startup.Entries.Count == 0) Startup.Reload();
+            if (value == Page.Boost && !BoostPage.Active) _ = BoostPage.Refresh();
         }
     }
 
     public object CurrentView => Page switch
     {
         Page.Diagnose => Diagnose,
+        Page.Boost => BoostPage,
         Page.Memory => Memory,
         Page.Startup => Startup,
         Page.Cleanup => Cleanup,
@@ -54,23 +65,39 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public RelayCommand RestartAsAdminCommand { get; }
     public event Action? RestartingAsAdmin;
 
-    public MainViewModel()
+    public MainViewModel(bool skipWelcome = false)
     {
+        int recovered = GameBoost.RecoverIfNeeded(); // undo a boost left behind by a crash
+
         Memory = new MemoryViewModel(this);
         Startup = new StartupViewModel(this);
         Cleanup = new CleanupViewModel(this);
         Dashboard = new DashboardViewModel(this);
         Diagnose = new DiagnoseViewModel(this);
+        BoostPage = new BoostViewModel(this);
         History = new HistoryViewModel(this);
 
         Recorder.Enabled = Settings.RecordInBackground;
         Recorder.ActivePlanName = () => Dashboard.ActivePlan?.Name;
-        Recorder.Recorded += ev => Ui(() => History.Add(ev));
+        Recorder.Recorded += ev => Ui(() => OnLagRecorded(ev));
+        Monitor.Network.Enabled = Settings.NetworkChecks;
 
         NavigateCommand = new RelayCommand(p => { if (p is string s && Enum.TryParse<Page>(s, out var pg)) Page = pg; });
         RestartAsAdminCommand = new RelayCommand(RestartAsAdmin, () => !IsAdmin);
 
+        if (!Settings.FirstRunDone && !skipWelcome) Welcome = new WelcomeViewModel(this);
+        if (recovered > 0) ShowToast($"Restored {recovered} apps from a game boost that was still on.");
+
         Monitor.Sampled += OnSample;
+    }
+
+    internal void FinishWelcome(bool diagnose)
+    {
+        if (Welcome is { } w) History.ApplyWelcome(w.Record, w.StartWithWindows, w.Notify, w.NetworkChecks);
+        Settings.FirstRunDone = true;
+        Settings.Save();
+        Welcome = null;
+        if (diagnose) Dashboard.DiagnoseCommand.Execute(null);
     }
 
     /// <summary>Runs on the monitor's thread once a second.</summary>
@@ -78,6 +105,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         Recorder.Feed(s);
         Diagnose.Feed(s);
+        Monitor.LowPower = !UiActive && !Diagnose.IsRunning && !Boost.Active;
+        if (Boost.Active && ++_boostCheck % 3 == 0 && !Boost.GameStillRunning())
+            Ui(async () =>
+            {
+                if (!Boost.Active) return;
+                await BoostPage.Stop("Your game closed.");
+                Notify?.Invoke("Game boost finished", "Your game closed, so Brisk put every app and your power plan back to normal.", Page.Boost);
+            });
         if (!UiActive) return;
 
         Ui(() => Dashboard.OnSample(s));
@@ -98,6 +133,17 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             }
             catch { Volatile.Write(ref _groupBusy, 0); }
         }
+    }
+
+    private void OnLagRecorded(LagEvent ev)
+    {
+        History.Add(ev);
+        // Alert once per 10 minutes at most, so a bad evening doesn't become notification spam.
+        if (!Settings.NotifyOnLag || DateTime.Now - _lastAlert < TimeSpan.FromMinutes(10)) return;
+        _lastAlert = DateTime.Now;
+        var dur = ev.Seconds >= 60 ? $"{ev.Seconds / 60:0} min" : $"{ev.Seconds:0} s";
+        string what = ev.Kinds.Contains("Network") && ev.Kinds.Count == 1 ? "Lag spike" : "Your PC struggled";
+        Notify?.Invoke($"{what} for {dur}", ev.Headline + ". Click to see what happened.", Page.History);
     }
 
     public static void Ui(Action a) => Application.Current?.Dispatcher.BeginInvoke(a);
@@ -154,8 +200,6 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             : $"Couldn't trim {name}. It may need admin.");
     }
 
-    public void ExitForAdmin() => RestartingAsAdmin?.Invoke();
-
     private void RestartAsAdmin()
     {
         try
@@ -167,7 +211,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         catch { ShowToast("Admin restart was cancelled."); App.ReacquireInstance(); }
     }
 
-    public void Dispose() => Monitor.Dispose();
+    public void Dispose()
+    {
+        if (Boost.Active) Boost.Stop(); // never leave apps throttled behind us
+        Monitor.Dispose();
+    }
 }
 
 public sealed class ConfirmRequest
@@ -193,4 +241,16 @@ public sealed class ConfirmRequest
     {
         if (_tcs.TrySetResult(ok)) Done?.Invoke();
     }
+}
+
+/// <summary>First launch: three switches and a nudge to try the diagnosis.</summary>
+public sealed class WelcomeViewModel(MainViewModel main) : ObservableObject
+{
+    public bool Record { get; set; } = true;
+    public bool StartWithWindows { get; set; } = true;
+    public bool Notify { get; set; } = true;
+    public bool NetworkChecks { get; set; } = true;
+
+    public RelayCommand DoneCommand { get; } = new(() => main.FinishWelcome(false));
+    public RelayCommand DiagnoseCommand { get; } = new(() => main.FinishWelcome(true));
 }

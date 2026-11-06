@@ -14,17 +14,18 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        _vm = new MainViewModel();
+        var args = Environment.GetCommandLineArgs();
+        _vm = new MainViewModel(skipWelcome: args.Contains("--skip-welcome", StringComparer.OrdinalIgnoreCase));
         DataContext = _vm;
 
-        // brisk.exe --page diagnose|memory|startup|cleanup|history  opens straight on that page.
-        var args = Environment.GetCommandLineArgs();
+        // brisk.exe --page diagnose|boost|memory|startup|cleanup|history  opens straight on that page.
         int i = Array.FindIndex(args, a => a.Equals("--page", StringComparison.OrdinalIgnoreCase));
         if (i >= 0 && i + 1 < args.Length && Enum.TryParse<Page>(args[i + 1], ignoreCase: true, out var page))
             _vm.Page = page;
 
         _tray = new TrayIcon(ShowFromTray, () => { ShowFromTray(); _vm.Dashboard.DiagnoseCommand.Execute(null); }, App.ExitApp);
         _vm.RestartingAsAdmin += () => { App.ReleaseInstance(); _tray.Dispose(); };
+        _vm.Notify += (title, text, page) => _tray.Notify(title, text, () => { ShowFromTray(); _vm.Page = page; });
 
         StateChanged += (_, _) => OnStateChanged();
         IsVisibleChanged += (_, _) => UpdateUiActive();
