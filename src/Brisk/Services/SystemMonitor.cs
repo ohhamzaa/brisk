@@ -47,6 +47,13 @@ public sealed class SystemMonitor : IDisposable
         if (Interlocked.Exchange(ref _busy, 1) == 1) return; // never overlap
         try
         {
+            if (Demo.On)
+            {
+                var demo = Demo.NextSample(_tick++);
+                Last = demo;
+                Sampled?.Invoke(demo);
+                return;
+            }
             if (_tick++ % 10 == 0) (_diskTotal, _diskFree, _) = SystemStats.GetSystemDrive();
             var (disk, perf, pagesIn) = _counters.Sample();
             // GPU counters are the priciest read (Windows enumerates every engine of every process).

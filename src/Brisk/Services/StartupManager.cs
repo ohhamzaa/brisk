@@ -37,6 +37,7 @@ public static class StartupManager
 
     public static List<StartupEntry> Load()
     {
+        if (Demo.On) return Demo.Startup().OrderBy(e => !e.Enabled).ThenBy(e => e.Name).ToList();
         var list = new List<StartupEntry>();
         ReadRun(list, Registry.CurrentUser, RunKey, StartupSource.UserRun);
         ReadRun(list, Registry.LocalMachine, RunKey, StartupSource.MachineRun);
@@ -48,6 +49,7 @@ public static class StartupManager
 
     public static void SetEnabled(StartupEntry e, bool enabled)
     {
+        if (Demo.On) { e.Enabled = enabled; return; }
         var (hive, sub) = ApprovedLocation(e.Source);
         using var key = hive.CreateSubKey(ApprovedBase + sub, writable: true)
                         ?? throw new UnauthorizedAccessException();

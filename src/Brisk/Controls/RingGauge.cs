@@ -50,6 +50,13 @@ public sealed class RingGauge : FrameworkElement
         nameof(DangerBrush), typeof(Brush), typeof(RingGauge),
         new FrameworkPropertyMetadata(Brushes.IndianRed, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    /// <summary>For "higher is better" values (health): low values turn warn/danger instead of high ones.</summary>
+    public static readonly DependencyProperty InvertedProperty = DependencyProperty.Register(
+        nameof(Inverted), typeof(bool), typeof(RingGauge),
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public bool Inverted { get => (bool)GetValue(InvertedProperty); set => SetValue(InvertedProperty, value); }
+
     public double Value { get => (double)GetValue(ValueProperty); set => SetValue(ValueProperty, value); }
     public double Thickness { get => (double)GetValue(ThicknessProperty); set => SetValue(ThicknessProperty, value); }
     public Brush TrackBrush { get => (Brush)GetValue(TrackBrushProperty); set => SetValue(TrackBrushProperty, value); }
@@ -69,7 +76,9 @@ public sealed class RingGauge : FrameworkElement
         double v = Math.Clamp((double)GetValue(ShownProperty), 0, 100);
         if (v <= 0.05) return;
         double target = Math.Clamp(Value, 0, 100); // colour follows the real value, not the animation
-        var brush = target >= 90 ? DangerBrush : target >= 75 ? WarnBrush : FillBrush;
+        var brush = Inverted
+            ? (target < 40 ? DangerBrush : target < 65 ? WarnBrush : FillBrush)
+            : (target >= 90 ? DangerBrush : target >= 75 ? WarnBrush : FillBrush);
         var pen = new Pen(brush, Thickness) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
 
         if (v >= 99.95) { dc.DrawEllipse(null, pen, c, r, r); return; }

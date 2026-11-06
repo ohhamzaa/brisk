@@ -22,7 +22,8 @@ public sealed class GameBoost
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Brisk", "boost-state.json");
 
     private State? _state;
-    public bool Active => _state != null;
+    public bool Active => _state != null || _demoActive;
+    private bool _demoActive;
     public int GamePid => _state?.GamePid ?? 0;
 
     /// <summary>Never throttled: Windows itself, anything audio/input related, and Brisk.</summary>
@@ -36,6 +37,7 @@ public sealed class GameBoost
 
     public BoostReport Start(int gamePid, IReadOnlyList<ProcInfo> procs, IReadOnlyList<PowerPlan> plans)
     {
+        if (Demo.On) { _demoActive = true; return new BoostReport(23, 1_350L << 20, "Ultimate Performance", false); }
         if (Active) Stop();
         int session = Process.GetCurrentProcess().SessionId;
         var saved = new List<Saved>();
@@ -94,6 +96,7 @@ public sealed class GameBoost
     /// <summary>Undo everything. Safe to call twice. Returns how many apps were restored.</summary>
     public int Stop()
     {
+        if (Demo.On) { bool was = _demoActive; _demoActive = false; return was ? 23 : 0; }
         var s = _state ?? LoadPersisted();
         _state = null;
         if (s == null) return 0;
@@ -122,10 +125,11 @@ public sealed class GameBoost
     }
 
     /// <summary>If Brisk was closed or crashed while boosting, put things back now.</summary>
-    public static int RecoverIfNeeded() => File.Exists(StatePath) ? new GameBoost().Stop() : 0;
+    public static int RecoverIfNeeded() => Demo.On ? 0 : File.Exists(StatePath) ? new GameBoost().Stop() : 0;
 
     public bool GameStillRunning()
     {
+        if (Demo.On) return _demoActive;
         if (_state == null) return false;
         try
         {
@@ -177,6 +181,7 @@ public sealed class GameBoost
     /// <summary>Apps with a visible window, the likely games, busiest GPU first.</summary>
     public static List<(int Pid, string Image, string Title, string? Path, double Gpu)> Candidates(IReadOnlyList<ProcInfo> procs)
     {
+        if (Demo.On) return Demo.BoostCandidates();
         int session = Process.GetCurrentProcess().SessionId;
         var gpu = procs.GroupBy(p => p.Pid).ToDictionary(g => g.Key, g => g.First());
         var list = new List<(int, string, string, string?, double)>();

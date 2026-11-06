@@ -20,6 +20,8 @@ public partial class App : Application
 
         bool restarted = e.Args.Contains("--restarted", StringComparer.OrdinalIgnoreCase);
         bool tray = e.Args.Contains("--tray", StringComparer.OrdinalIgnoreCase);
+        Services.Demo.On = e.Args.Contains("--demo", StringComparer.OrdinalIgnoreCase);
+        Services.Demo.ShowWelcome = e.Args.Contains("--welcome", StringComparer.OrdinalIgnoreCase);
 
         _mutex = new Mutex(false, MutexName);
         _showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowEventName);

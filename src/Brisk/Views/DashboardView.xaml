@@ -4,16 +4,16 @@
              xmlns:c="clr-namespace:Brisk.Controls">
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="32,0,32,32">
         <StackPanel>
-            <!-- header -->
-            <DockPanel Margin="0,0,0,22">
+            <!-- ===== header ===== -->
+            <DockPanel Margin="0,0,0,20">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Style="{StaticResource BaseButton}" AutomationProperties.Name="Scan junk" Command="{Binding QuickCleanCommand}" Margin="0,0,8,0">
+                    <Button Style="{StaticResource BaseButton}" Command="{Binding QuickCleanCommand}" Margin="0,0,8,0" AutomationProperties.Name="Scan junk">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE74D;" Style="{StaticResource Icon}" FontSize="13" Margin="0,0,8,0" />
                             <TextBlock Text="Scan junk" />
                         </StackPanel>
                     </Button>
-                    <Button Style="{StaticResource PrimaryButton}" AutomationProperties.Name="Free up RAM" Command="{Binding FreeRamCommand}">
+                    <Button Style="{StaticResource BaseButton}" Command="{Binding FreeRamCommand}" AutomationProperties.Name="Free up RAM">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE945;" Style="{StaticResource Icon}" FontSize="13" Margin="0,0,8,0" />
                             <TextBlock Text="Free up RAM" />
@@ -28,143 +28,155 @@
                 </StackPanel>
             </DockPanel>
 
-            <!-- hero: the twist -->
-            <Border Style="{StaticResource Card}" Padding="20,16" Margin="0,0,0,12" BorderBrush="#24452F" c:Anim.Delay="0">
-                <DockPanel>
-                    <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Command="{Binding DiagnoseCommand}"
-                            VerticalAlignment="Center" AutomationProperties.Name="Diagnose now">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE9D9;" Style="{StaticResource Icon}" FontSize="13" Margin="0,0,8,0" />
-                            <TextBlock Text="Diagnose now" />
+            <!-- ===== health hero ===== -->
+            <Border Style="{StaticResource Card}" Padding="26,24" c:Anim.Delay="0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Grid Width="116" Height="116" Margin="0,0,26,0">
+                        <c:RingGauge Thickness="9" Value="{Binding Health}" Inverted="True"
+                                     TrackBrush="{StaticResource Surface2Brush}" FillBrush="{StaticResource AccentBrush}"
+                                     WarnBrush="{StaticResource WarnBrush}" DangerBrush="{StaticResource DangerBrush}" />
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding HealthText}" Style="{StaticResource BigNumber}" FontSize="36" HorizontalAlignment="Center" />
+                            <TextBlock Text="HEALTH" Style="{StaticResource Label}" FontSize="10" HorizontalAlignment="Center" Margin="0,-3,0,0" />
                         </StackPanel>
-                    </Button>
-                    <Border DockPanel.Dock="Left" Width="40" Height="40" CornerRadius="10" Background="{StaticResource AccentDimBrush}" Margin="0,0,14,0">
-                        <Path Style="{StaticResource PulseLine}" c:Loop.Kind="heartbeat" StrokeThickness="2" Margin="8,11" />
-                    </Border>
-                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="PC feeling slow? Find out exactly why in 10 seconds." Style="{StaticResource H2}" FontSize="14.5" />
-                        <TextBlock Style="{StaticResource Dim}" Margin="0,3,0,0"
-                                   Text="Names the app or Windows task that's responsible, in plain English, with a one-click fix."
-                                   Visibility="{Binding LastLag, Converter={StaticResource Hidden}}" />
-                        <TextBlock Style="{StaticResource Dim}" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                                   Visibility="{Binding LastLag, Converter={StaticResource Visible}}">
+                    </Grid>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,20,0">
+                        <TextBlock Text="{Binding HealthTitle}" Style="{StaticResource H2}" FontSize="21" FontFamily="{StaticResource DisplayFont}" />
+                        <TextBlock Text="{Binding HealthReason}" Style="{StaticResource Dim}" FontSize="13.5" Margin="0,5,0,12" />
+                        <WrapPanel>
+                            <Border Style="{StaticResource Chip}"><TextBlock Text="{Binding ChipCpu}" Foreground="{StaticResource TextDimBrush}" FontSize="12" /></Border>
+                            <Border Style="{StaticResource Chip}"><TextBlock Text="{Binding ChipMem}" Foreground="{StaticResource TextDimBrush}" FontSize="12" /></Border>
+                            <Border Style="{StaticResource Chip}" Visibility="{Binding ChipGpu, Converter={StaticResource Visible}}">
+                                <TextBlock Text="{Binding ChipGpu}" Foreground="{StaticResource TextDimBrush}" FontSize="12" />
+                            </Border>
+                            <Border Style="{StaticResource Chip}" Visibility="{Binding ChipPing, Converter={StaticResource Visible}}">
+                                <TextBlock Text="{Binding ChipPing}" Foreground="{StaticResource TextDimBrush}" FontSize="12" />
+                            </Border>
+                        </WrapPanel>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" VerticalAlignment="Center" Width="230">
+                        <Button Style="{StaticResource PrimaryButton}" Command="{Binding DiagnoseCommand}" Padding="18,11" FontSize="13.5"
+                                AutomationProperties.Name="Diagnose now">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource PulseLine}" c:Loop.Kind="heartbeat" Stroke="{StaticResource OnAccentBrush}"
+                                      StrokeThickness="1.8" Width="18" Height="12" Margin="0,0,9,0" />
+                                <TextBlock Text="Why is my PC slow?" />
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Style="{StaticResource Dim}" FontSize="11.5" Margin="2,10,0,0" TextAlignment="Left"
+                                   Text="A 10-second check that names the cause." Visibility="{Binding LastLag, Converter={StaticResource Hidden}}" />
+                        <TextBlock Style="{StaticResource Dim}" FontSize="11.5" Margin="2,10,0,0" TextWrapping="Wrap" MaxHeight="34"
+                                   TextTrimming="CharacterEllipsis" Visibility="{Binding LastLag, Converter={StaticResource Visible}}">
                             <Hyperlink Command="{Binding OpenHistoryCommand}" Foreground="{StaticResource TextDimBrush}" TextDecorations="None">
                                 <Run Text="{Binding LastLag, Mode=OneWay}" />
                             </Hyperlink>
                         </TextBlock>
                     </StackPanel>
-                </DockPanel>
+                </Grid>
             </Border>
 
-            <!-- gauges -->
-            <UniformGrid Columns="3" Margin="-6,0">
+            <!-- ===== metric cards ===== -->
+            <UniformGrid Columns="3" Margin="-6,12,-6,0">
                 <!-- CPU -->
                 <Border Style="{StaticResource Card}" Margin="6,0" c:Anim.Delay="60">
                     <StackPanel>
                         <DockPanel>
-                            <TextBlock DockPanel.Dock="Right" Text="{Binding CoresText}" Style="{StaticResource Label}" FontWeight="Normal" />
-                            <TextBlock Text="PROCESSOR" Style="{StaticResource Label}" />
+                            <Border Style="{StaticResource IconChip}" Background="{StaticResource AccentTint}">
+                                <TextBlock Text="&#xE9D9;" Style="{StaticResource Icon}" FontSize="13" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" />
+                            </Border>
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding CoresText}" Style="{StaticResource Label}" FontWeight="Normal" VerticalAlignment="Center" />
+                            <TextBlock Text="PROCESSOR" Style="{StaticResource Label}" VerticalAlignment="Center" />
                         </DockPanel>
-                        <Grid Margin="0,16,0,0">
-                            <c:RingGauge Width="92" Height="92" Thickness="8" Value="{Binding Cpu}" HorizontalAlignment="Left"
-                                         TrackBrush="{StaticResource Surface2Brush}" FillBrush="{StaticResource AccentBrush}"
-                                         WarnBrush="{StaticResource WarnBrush}" DangerBrush="{StaticResource DangerBrush}" />
-                            <StackPanel Orientation="Horizontal" Width="92" HorizontalAlignment="Left" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding CpuText}" Style="{StaticResource BigNumber}" FontSize="24" Width="92"
-                                           TextAlignment="Center" />
-                            </StackPanel>
-                            <StackPanel Margin="110,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource H2}" FontSize="16">
-                                    <Run Text="{Binding ProcessCount, Mode=OneWay}" /><Run Text=" processes" FontWeight="Normal" FontSize="13" Foreground="{StaticResource TextDimBrush}" />
-                                </TextBlock>
-                                <TextBlock Text="Busiest app" Style="{StaticResource Dim}" Margin="0,6,0,0" />
-                                <TextBlock Text="{Binding TopCpu}" Foreground="{StaticResource TextBrush}" FontSize="12.5"
-                                           TextTrimming="CharacterEllipsis" />
-                            </StackPanel>
-                        </Grid>
-                        <c:Sparkline Height="44" Margin="0,16,0,0" Values="{Binding CpuHistory}" Stroke="{StaticResource AccentBrush}" />
+                        <TextBlock Margin="0,14,0,0">
+                            <Run Text="{Binding CpuText, Mode=OneWay}" FontFamily="{StaticResource DisplayFont}" FontSize="34" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" /><Run Text="%" FontSize="16" Foreground="{StaticResource TextDimBrush}" />
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource Dim}" FontSize="12" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap">
+                            <Run Text="{Binding ProcessCount, Mode=OneWay}" /><Run Text=" processes  ·  " /><Run Text="{Binding TopCpu, Mode=OneWay}" />
+                        </TextBlock>
+                        <c:Sparkline Height="64" Margin="0,14,0,0" Values="{Binding CpuHistory}" Stroke="{StaticResource AccentBrush}" />
                     </StackPanel>
                 </Border>
 
-                <!-- RAM -->
+                <!-- Memory -->
                 <Border Style="{StaticResource Card}" Margin="6,0" c:Anim.Delay="110">
                     <StackPanel>
                         <DockPanel>
-                            <TextBlock DockPanel.Dock="Right" Text="{Binding RamTotal}" Style="{StaticResource Label}" FontWeight="Normal" />
-                            <TextBlock Text="MEMORY" Style="{StaticResource Label}" />
+                            <Border Style="{StaticResource IconChip}" Background="{StaticResource InfoTint}">
+                                <TextBlock Text="&#xE964;" Style="{StaticResource Icon}" FontSize="13" Foreground="{StaticResource InfoBrush}" HorizontalAlignment="Center" />
+                            </Border>
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding RamTotal}" Style="{StaticResource Label}" FontWeight="Normal" VerticalAlignment="Center" />
+                            <TextBlock Text="MEMORY" Style="{StaticResource Label}" VerticalAlignment="Center" />
                         </DockPanel>
-                        <Grid Margin="0,16,0,0">
-                            <c:RingGauge Width="92" Height="92" Thickness="8" Value="{Binding Ram}" HorizontalAlignment="Left"
-                                         TrackBrush="{StaticResource Surface2Brush}" FillBrush="{StaticResource InfoBrush}"
-                                         WarnBrush="{StaticResource WarnBrush}" DangerBrush="{StaticResource DangerBrush}" />
-                            <TextBlock Text="{Binding RamText}" Style="{StaticResource BigNumber}" FontSize="24" Width="92"
-                                       TextAlignment="Center" HorizontalAlignment="Left" VerticalAlignment="Center" />
-                            <StackPanel Margin="110,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding RamDetail}" Style="{StaticResource H2}" FontSize="16" />
-                                <TextBlock Style="{StaticResource Dim}" Margin="0,4,0,0">
-                                    <Run Text="Available " /><Run Text="{Binding RamAvailable, Mode=OneWay}" Foreground="{StaticResource TextBrush}" />
-                                </TextBlock>
-                                <TextBlock Style="{StaticResource Dim}"
-                                           ToolTip="Windows keeps recently used files in spare RAM to make them open faster. It's given back instantly when an app needs it.">
-                                    <Run Text="Cached " /><Run Text="{Binding RamCached, Mode=OneWay}" Foreground="{StaticResource TextBrush}" />
-                                </TextBlock>
-                            </StackPanel>
-                        </Grid>
-                        <c:Sparkline Height="44" Margin="0,16,0,0" Values="{Binding RamHistory}" Stroke="{StaticResource InfoBrush}" />
+                        <TextBlock Margin="0,14,0,0">
+                            <Run Text="{Binding RamText, Mode=OneWay}" FontFamily="{StaticResource DisplayFont}" FontSize="34" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" /><Run Text="%" FontSize="16" Foreground="{StaticResource TextDimBrush}" />
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource Dim}" FontSize="12" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                   ToolTip="Cached memory is spare RAM Windows uses to make files open faster. It's handed back instantly when an app needs it.">
+                            <Run Text="{Binding RamDetail, Mode=OneWay}" /><Run Text="  ·  " /><Run Text="{Binding RamCached, Mode=OneWay}" /><Run Text=" cached" />
+                        </TextBlock>
+                        <c:Sparkline Height="64" Margin="0,14,0,0" Values="{Binding RamHistory}" Stroke="{StaticResource InfoBrush}" />
                     </StackPanel>
                 </Border>
 
-                <!-- Disk + uptime -->
+                <!-- Graphics -->
                 <Border Style="{StaticResource Card}" Margin="6,0" c:Anim.Delay="160">
                     <StackPanel>
                         <DockPanel>
-                            <TextBlock DockPanel.Dock="Right" Text="{Binding DiskName}" Style="{StaticResource Label}" FontWeight="Normal" />
-                            <TextBlock Text="STORAGE" Style="{StaticResource Label}" />
+                            <Border Style="{StaticResource IconChip}" Background="{StaticResource PurpleTint}">
+                                <TextBlock Text="&#xE7F8;" Style="{StaticResource Icon}" FontSize="13" Foreground="{StaticResource PurpleBrush}" HorizontalAlignment="Center" />
+                            </Border>
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding VramSub}" Style="{StaticResource Label}" FontWeight="Normal" VerticalAlignment="Center" />
+                            <TextBlock Text="GRAPHICS" Style="{StaticResource Label}" VerticalAlignment="Center" />
                         </DockPanel>
-                        <Grid Margin="0,16,0,0">
-                            <c:RingGauge Width="92" Height="92" Thickness="8" Value="{Binding Disk}" HorizontalAlignment="Left"
-                                         TrackBrush="{StaticResource Surface2Brush}" FillBrush="{StaticResource AccentBrush}"
-                                         WarnBrush="{StaticResource WarnBrush}" DangerBrush="{StaticResource DangerBrush}" />
-                            <TextBlock Text="{Binding Disk, StringFormat={}{0:0}}" Style="{StaticResource BigNumber}" FontSize="24" Width="92"
-                                       TextAlignment="Center" HorizontalAlignment="Left" VerticalAlignment="Center" />
-                            <StackPanel Margin="110,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding DiskText}" Style="{StaticResource H2}" FontSize="16" />
-                                <TextBlock Text="{Binding DiskTotal}" Style="{StaticResource Dim}" Margin="0,4,0,0" />
-                            </StackPanel>
-                        </Grid>
-                        <Border Background="{StaticResource Surface2Brush}" CornerRadius="8" Padding="12,10" Margin="0,16,0,0" Height="44">
-                            <DockPanel VerticalAlignment="Center">
-                                <TextBlock Text="&#xE823;" Style="{StaticResource Icon}" FontSize="13" Foreground="{StaticResource TextDimBrush}" Margin="0,0,10,0" />
-                                <TextBlock DockPanel.Dock="Right" Text="{Binding Uptime}" Style="{StaticResource H2}" FontSize="13" />
-                                <TextBlock Text="On since last restart" Style="{StaticResource Dim}" VerticalAlignment="Center" />
-                            </DockPanel>
-                        </Border>
+                        <TextBlock Text="{Binding GpuText}" FontFamily="{StaticResource DisplayFont}" FontSize="34" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextBrush}" Margin="0,14,0,0" />
+                        <TextBlock Style="{StaticResource Dim}" FontSize="12" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap">
+                            <Run Text="{Binding GpuSub, Mode=OneWay}" /><Run Text="  ·  " /><Run Text="{Binding VramText, Mode=OneWay}" />
+                        </TextBlock>
+                        <c:Sparkline Height="64" Margin="0,14,0,0" Values="{Binding GpuHistory}" Stroke="{StaticResource PurpleBrush}" />
                     </StackPanel>
                 </Border>
             </UniformGrid>
 
-            <!-- GPU + network strip -->
-            <Border Style="{StaticResource Card}" Margin="0,12,0,0" Padding="6,12" c:Anim.Delay="200">
+            <!-- ===== storage / network strip ===== -->
+            <Border Style="{StaticResource Card}" Margin="0,12,0,0" Padding="6,14" c:Anim.Delay="200">
                 <UniformGrid Columns="4">
                     <UniformGrid.Resources>
                         <Style x:Key="TileSep" TargetType="Border">
                             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
                             <Setter Property="BorderThickness" Value="0,0,1,0" />
-                            <Setter Property="Padding" Value="14,2" />
+                            <Setter Property="Padding" Value="16,2" />
                         </Style>
                     </UniformGrid.Resources>
                     <Border Style="{StaticResource TileSep}">
                         <StackPanel>
-                            <TextBlock Text="GRAPHICS" Style="{StaticResource Label}" />
-                            <TextBlock Text="{Binding GpuText}" Style="{StaticResource H2}" FontSize="17" Margin="0,5,0,0" />
-                            <TextBlock Text="{Binding GpuSub}" Style="{StaticResource Dim}" FontSize="11.5" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding DiskUsedText}" Style="{StaticResource Label}" FontWeight="Normal" />
+                                <TextBlock Style="{StaticResource Label}"><Run Text="STORAGE " /><Run Text="{Binding DiskName, Mode=OneWay}" /></TextBlock>
+                            </DockPanel>
+                            <TextBlock Text="{Binding DiskText}" Style="{StaticResource H2}" FontSize="17" Margin="0,6,0,6" />
+                            <Border Height="4" CornerRadius="2" Background="{StaticResource Surface2Brush}">
+                                <Border CornerRadius="2" Background="{StaticResource AccentBrush}" RenderTransformOrigin="0,0.5">
+                                    <Border.RenderTransform>
+                                        <ScaleTransform ScaleX="{Binding Disk, Converter={StaticResource Fraction}}" />
+                                    </Border.RenderTransform>
+                                </Border>
+                            </Border>
                         </StackPanel>
                     </Border>
                     <Border Style="{StaticResource TileSep}">
                         <StackPanel>
-                            <TextBlock Text="VIDEO MEMORY" Style="{StaticResource Label}" />
-                            <TextBlock Text="{Binding VramText}" Style="{StaticResource H2}" FontSize="17" Margin="0,5,0,0" />
-                            <TextBlock Text="{Binding VramSub}" Style="{StaticResource Dim}" FontSize="11.5" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                            <TextBlock Text="UP TIME" Style="{StaticResource Label}" />
+                            <TextBlock Text="{Binding Uptime}" Style="{StaticResource H2}" FontSize="17" Margin="0,6,0,0" />
+                            <TextBlock Text="since the last restart" Style="{StaticResource Dim}" FontSize="11.5" />
                         </StackPanel>
                     </Border>
                     <Border Style="{StaticResource TileSep}">
@@ -174,22 +186,22 @@
                                          Fill="{Binding PingLevel, Converter={StaticResource LevelBrush}}" />
                                 <TextBlock Text="PING" Style="{StaticResource Label}" />
                             </StackPanel>
-                            <TextBlock Text="{Binding PingText}" Style="{StaticResource H2}" FontSize="17" Margin="0,5,0,0" />
+                            <TextBlock Text="{Binding PingText}" Style="{StaticResource H2}" FontSize="17" Margin="0,6,0,0" />
                             <TextBlock Text="{Binding PingSub}" Style="{StaticResource Dim}" FontSize="11.5" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                                       ToolTip="Internet ping goes to 1.1.1.1. Router ping shows whether lag is on your Wi-Fi or with your provider." />
+                                       ToolTip="Internet ping goes to 1.1.1.1. Router ping shows whether lag is your Wi-Fi or your provider." />
                         </StackPanel>
                     </Border>
                     <Border Style="{StaticResource TileSep}" BorderThickness="0">
                         <StackPanel>
                             <TextBlock Text="NETWORK" Style="{StaticResource Label}" />
-                            <TextBlock Text="{Binding TrafficText}" Style="{StaticResource H2}" FontSize="17" Margin="0,5,0,0" />
+                            <TextBlock Text="{Binding TrafficText}" Style="{StaticResource H2}" FontSize="17" Margin="0,6,0,0" />
                             <TextBlock Text="{Binding TrafficSub}" Style="{StaticResource Dim}" FontSize="11.5" />
                         </StackPanel>
                     </Border>
                 </UniformGrid>
             </Border>
 
-            <!-- tips + top apps -->
+            <!-- ===== tips + top apps ===== -->
             <Grid Margin="0,12,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -197,13 +209,18 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <Border Style="{StaticResource Card}" c:Anim.Delay="220">
+                <Border Style="{StaticResource Card}" c:Anim.Delay="240">
                     <StackPanel>
-                        <TextBlock Text="RECOMMENDATIONS" Style="{StaticResource Label}" Margin="0,0,0,12" />
+                        <DockPanel Margin="0,0,0,12">
+                            <Border Style="{StaticResource IconChip}" Background="{StaticResource WarnTint}">
+                                <TextBlock Text="&#xE82F;" Style="{StaticResource Icon}" FontSize="13" Foreground="{StaticResource WarnBrush}" HorizontalAlignment="Center" />
+                            </Border>
+                            <TextBlock Text="RECOMMENDATIONS" Style="{StaticResource Label}" VerticalAlignment="Center" />
+                        </DockPanel>
                         <ItemsControl ItemsSource="{Binding Tips}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="{StaticResource Surface2Brush}" CornerRadius="8" Padding="14,12" Margin="0,0,0,8">
+                                    <Border Background="{StaticResource Surface2Brush}" CornerRadius="9" Padding="14,12" Margin="0,0,0,8">
                                         <DockPanel>
                                             <Border DockPanel.Dock="Left" Width="4" CornerRadius="2" Margin="0,2,12,2"
                                                     Background="{Binding Level, Converter={StaticResource LevelBrush}}" />
@@ -222,9 +239,12 @@
                     </StackPanel>
                 </Border>
 
-                <Border Grid.Column="2" Style="{StaticResource Card}" c:Anim.Delay="260">
+                <Border Grid.Column="2" Style="{StaticResource Card}" c:Anim.Delay="280">
                     <StackPanel>
-                        <DockPanel Margin="0,0,0,8">
+                        <DockPanel Margin="0,0,0,6">
+                            <Border Style="{StaticResource IconChip}" Background="{StaticResource InfoTint}">
+                                <TextBlock Text="&#xE8FD;" Style="{StaticResource Icon}" FontSize="13" Foreground="{StaticResource InfoBrush}" HorizontalAlignment="Center" />
+                            </Border>
                             <Button DockPanel.Dock="Right" Content="See all" Style="{StaticResource GhostButton}" FontSize="12"
                                     Padding="8,3" BorderThickness="0" Foreground="{StaticResource TextDimBrush}"
                                     Command="{Binding OpenMemoryCommand}" />
@@ -233,22 +253,19 @@
                         <ItemsControl ItemsSource="{Binding TopApps}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid Margin="0,6">
+                                    <Grid Margin="0,7">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="30" />
+                                            <ColumnDefinition Width="34" />
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="80" />
                                         </Grid.ColumnDefinitions>
-                                        <Image Source="{Binding Icon}" Width="20" Height="20" HorizontalAlignment="Left"
+                                        <Image Source="{Binding Icon}" Width="22" Height="22" HorizontalAlignment="Left"
                                                RenderOptions.BitmapScalingMode="HighQuality" />
-                                        <TextBlock Text="&#xE7B8;" Style="{StaticResource Icon}" Foreground="{StaticResource TextFaintBrush}"
-                                                   Visibility="{Binding Icon, Converter={StaticResource Hidden}}" />
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource TextBrush}" FontSize="13"
                                                        TextTrimming="CharacterEllipsis" />
-                                            <Border Height="3" CornerRadius="2" Background="{StaticResource Surface2Brush}" Margin="0,5,12,0">
-                                                <Border CornerRadius="2" Background="{StaticResource InfoBrush}" HorizontalAlignment="Stretch"
-                                                        RenderTransformOrigin="0,0.5">
+                                            <Border Height="3" CornerRadius="2" Background="{StaticResource Surface2Brush}" Margin="0,6,14,0">
+                                                <Border CornerRadius="2" Background="{StaticResource InfoBrush}" RenderTransformOrigin="0,0.5">
                                                     <Border.RenderTransform>
                                                         <ScaleTransform ScaleX="{Binding Share}" />
                                                     </Border.RenderTransform>
@@ -265,11 +282,14 @@
                 </Border>
             </Grid>
 
-            <!-- power plan -->
-            <Border Style="{StaticResource Card}" Margin="0,12,0,0" c:Anim.Delay="300">
+            <!-- ===== power plan ===== -->
+            <Border Style="{StaticResource Card}" Margin="0,12,0,0" c:Anim.Delay="320">
                 <DockPanel>
-                    <StackPanel DockPanel.Dock="Left" Width="260" Margin="0,0,20,0">
-                        <TextBlock Text="POWER PLAN" Style="{StaticResource Label}" />
+                    <Border DockPanel.Dock="Left" Style="{StaticResource IconChip}" Background="{StaticResource AccentTint}" VerticalAlignment="Top">
+                        <TextBlock Text="&#xE945;" Style="{StaticResource Icon}" FontSize="13" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" />
+                    </Border>
+                    <StackPanel DockPanel.Dock="Left" Width="240" Margin="0,0,20,0">
+                        <TextBlock Text="POWER PLAN" Style="{StaticResource Label}" Margin="0,6,0,0" />
                         <TextBlock Text="High performance keeps the CPU at full speed. Balanced saves power when idle."
                                    Style="{StaticResource Dim}" Margin="0,6,0,0" />
                     </StackPanel>

@@ -292,6 +292,35 @@ finally
     GameBoost.RecoverIfNeeded();
 }
 
+// ---------- 7b. Demo mode never touches the real PC ----------
+var victim = Dummy();
+const string runKeyDemo = @"Software\Microsoft\Windows\CurrentVersion\Run";
+string? runBefore;
+using (var k = Registry.CurrentUser.OpenSubKey(runKeyDemo)) runBefore = k?.GetValue("Brisk") as string;
+try
+{
+    Thread.Sleep(500);
+    victim.PriorityClass = ProcessPriorityClass.Normal;
+    Demo.On = true;
+    Check("demo: End task is a no-op on a real process", ProcessScanner.Kill(victim.Id) && !victim.HasExited);
+    Settings.StartWithWindows = !Settings.StartWithWindows;
+    using (var k = Registry.CurrentUser.OpenSubKey(runKeyDemo)) Check("demo: 'Start with Windows' doesn't touch the registry", (k?.GetValue("Brisk") as string) == runBefore);
+    Check("demo: startup list is the sample one", StartupManager.Load().Any(e => e.Name == "Skyline Racers Launcher"));
+    var demoBoost = new GameBoost();
+    bool reported = demoBoost.Start(victim.Id, [], []).Throttled > 0;
+    victim.Refresh();
+    Check("demo: game boost changes nothing", reported && victim.PriorityClass == ProcessPriorityClass.Normal);
+    demoBoost.Stop();
+    var ds = Demo.NextSample(5);
+    Check($"demo: sample PC is under memory pressure with a game on the GPU ({ds.MemUsedPct:0}% RAM, {ds.GpuPct:0}% GPU)",
+        ds.MemUsedPct > 85 && ds.GpuPct > 85 && ds.Procs.Count > 100);
+}
+finally
+{
+    Demo.On = false;
+    if (!victim.HasExited) victim.Kill();
+}
+
 // ---------- 8. GPU counters on this PC ----------
 using (var gc = new GpuCounters())
 {

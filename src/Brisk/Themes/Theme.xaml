@@ -32,6 +32,17 @@
     <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}" />
     <SolidColorBrush x:Key="InfoBrush" Color="{StaticResource InfoColor}" />
     <SolidColorBrush x:Key="PurpleBrush" Color="#B18CF5" />
+    <!-- tinted backgrounds for icon chips -->
+    <SolidColorBrush x:Key="AccentTint" Color="#1F5EE08A" />
+    <SolidColorBrush x:Key="InfoTint" Color="#1F6AA9F5" />
+    <SolidColorBrush x:Key="PurpleTint" Color="#1FB18CF5" />
+    <SolidColorBrush x:Key="WarnTint" Color="#1FF5B544" />
+    <!-- card edge: a slightly brighter top edge reads as depth without glows or shadows -->
+    <LinearGradientBrush x:Key="CardEdgeBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#30363D" Offset="0" />
+        <GradientStop Color="#22272C" Offset="0.35" />
+        <GradientStop Color="#1F2327" Offset="1" />
+    </LinearGradientBrush>
     <SolidColorBrush x:Key="OnAccentBrush" Color="#08130C" />
 
     <FontFamily x:Key="UiFont">Segoe UI Variable Text, Segoe UI</FontFamily>
@@ -84,10 +95,30 @@
     <!-- ===== surfaces ===== -->
     <Style x:Key="Card" TargetType="Border">
         <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CardEdgeBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="CornerRadius" Value="12" />
         <Setter Property="Padding" Value="18" />
+    </Style>
+
+    <!-- small tinted square holding a Fluent icon, used in card headers -->
+    <Style x:Key="IconChip" TargetType="Border">
+        <Setter Property="Width" Value="28" />
+        <Setter Property="Height" Value="28" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Margin" Value="0,0,10,0" />
+    </Style>
+
+    <Style x:Key="Chip" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource Surface2Brush}" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="9,4" />
+        <Setter Property="Margin" Value="0,0,6,0" />
+    </Style>
+
+    <Style x:Key="NavSection" TargetType="TextBlock" BasedOn="{StaticResource Label}">
+        <Setter Property="FontSize" Value="10.5" />
+        <Setter Property="Margin" Value="12,16,0,6" />
     </Style>
 
     <!-- ===== buttons ===== -->

@@ -113,6 +113,7 @@ public sealed class ProcessScanner
 
     public static string? GetPath(int pid)
     {
+        if (Demo.On && pid >= 100_000) return Demo.PathFor(pid);
         lock (PathCache)
         {
             if (PathCache.TryGetValue(pid, out var cached)) return cached;
@@ -145,6 +146,7 @@ public sealed class ProcessScanner
     /// <summary>Moves a process's pages out of RAM (they come back on demand). Returns false if access denied.</summary>
     public static bool TrimWorkingSet(int pid)
     {
+        if (Demo.On) return true; // demo: pretend, never touch real processes
         IntPtr h = NativeMethods.OpenProcess(NativeMethods.PROCESS_SET_QUOTA | NativeMethods.PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
         if (h == IntPtr.Zero) return false;
         try { return NativeMethods.EmptyWorkingSet(h); }
@@ -153,6 +155,7 @@ public sealed class ProcessScanner
 
     public static bool Kill(int pid)
     {
+        if (Demo.On) return true;
         try
         {
             using var p = Process.GetProcessById(pid);

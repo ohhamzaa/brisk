@@ -57,7 +57,7 @@ public sealed class BoostViewModel : ObservableObject
         var keep = Selected?.Pid;
         Candidates.Clear();
         foreach (var c in list)
-            Candidates.Add(new BoostCandidate { Pid = c.Pid, Image = c.Image, Title = c.Title, Icon = IconCache.Get(c.Path), Gpu = c.Gpu });
+            Candidates.Add(new BoostCandidate { Pid = c.Pid, Image = c.Image, Title = c.Title, Icon = IconCache.GetOrAvatar(c.Path, c.Title), Gpu = c.Gpu });
         Selected = Candidates.FirstOrDefault(c => c.Pid == keep)
                 ?? (_preferImage != null ? Candidates.FirstOrDefault(c => c.Image.Equals(_preferImage, StringComparison.OrdinalIgnoreCase)) : null)
                 ?? Candidates.FirstOrDefault(c => c.Gpu >= 10);

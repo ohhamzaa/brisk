@@ -20,7 +20,12 @@ public sealed class LagEventVm(LagEvent e)
     public string Detail => Event.Detail;
     public string KindsText => string.Join(" + ", Event.Kinds);
     public string CulpritsText => Event.Culprits.Count == 0 ? "" : "Top causes: " + string.Join(", ", Event.Culprits);
-    public string Level => Event.Seconds >= 30 ? "danger" : "warn";
+    /// <summary>Colour by cause, matching the timeline legend.</summary>
+    public string Level =>
+        Event.Kinds.Contains("Network") && Event.Kinds.Count == 1 ? "info"
+        : Event.Kinds.Contains("Memory") || Event.Kinds.Contains("GPU memory") ? "warn"
+        : Event.Kinds.Contains("Disk") ? "purple"
+        : "danger";
 }
 
 /// <summary>The lag black box: every slowdown Brisk saw, and who caused it.</summary>

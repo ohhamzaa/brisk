@@ -14,6 +14,7 @@
             <local:LevelToBrushConverter x:Key="LevelBrush" />
             <local:InverseBoolConverter x:Key="InverseBool" />
             <local:PercentConverter x:Key="Percent" />
+            <local:FractionConverter x:Key="Fraction" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

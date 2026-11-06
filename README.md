@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/diagnose.png" width="860" alt="Brisk diagnosing a slow PC" />
+  <img src="docs/screenshots/hero.png" width="920" alt="Brisk: health overview and a diagnosis naming what's slowing the PC down" />
 </p>
 
 ---
@@ -31,7 +31,11 @@
 ## What makes it different
 
 ### 1. "Why is my PC slow?" diagnosis
-Press **Diagnose now** while your PC feels slow. Brisk watches for 10 seconds and gives you an **answer**, not a wall of graphs:
+Press **Why is my PC slow?** while it feels slow. Brisk watches for 10 seconds and gives you an **answer**, not a wall of graphs:
+
+<p align="center">
+  <img src="docs/screenshots/diagnose.png" width="860" alt="Diagnosis results with one-click fixes" />
+</p>
 
 > **Google Chrome is making Windows swap to disk.** Only 6% of RAM is free, so Windows is reading 2,400 pages a second back from disk. That's the stutter you feel. Chrome is using 6.1 GB. *[Free up RAM] [Trim Chrome] [End Chrome]*
 
@@ -64,19 +68,29 @@ Close the window and Brisk keeps watching from the tray, at **about 0.1% CPU**. 
 ### 3. Game boost
 Pick your game and press **Boost**. Brisk puts background apps into Windows **Efficiency mode** at lower priority, gives your game higher priority, frees idle memory, and switches to your fastest power plan. **Nothing is closed.** When the game exits, everything goes back exactly as it was. The state is saved to disk first, so even if Brisk crashes mid-game, the next launch restores it. Voice chat, overlays and Windows itself are never throttled.
 
+<p align="center">
+  <img src="docs/screenshots/boost.png" width="860" alt="Game boost" />
+</p>
+
 ## Plus the essentials, done honestly
 
 | | |
 |---|---|
-| **Overview** | Live CPU, memory and storage with history graphs, your busiest apps, plain-English recommendations, and one-click power plan switching. |
+| **Overview** | A 0–100 **PC health score** with the reason in one sentence, live CPU / memory / graphics charts, storage, ping and network, your busiest apps, recommendations, and one-click power plan switching. |
 | **Memory** | Every app grouped into one row (40 `chrome.exe` processes become one "Google Chrome" row) with real private memory and CPU. Trim or end any app. Core Windows processes are protected. |
 | **Startup apps** | Everything that launches at sign-in, one switch each. Same settings Task Manager uses, so nothing is deleted and it's all reversible. |
 | **Cleanup** | Temp files, browser caches (Chrome, Edge, Brave, Opera, Vivaldi, Firefox), thumbnails, crash dumps, Windows Update leftovers, dev caches (npm, pip, NuGet…), Recycle Bin. You pick what goes. |
 
 <p align="center">
-  <img src="docs/screenshots/overview.png" width="420" alt="Overview" />
+  <img src="docs/screenshots/overview.png" width="420" alt="Overview with health score" />
+  <img src="docs/screenshots/memory.png" width="420" alt="Memory, grouped by app" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/history.png" width="420" alt="Lag history" />
   <img src="docs/screenshots/cleanup.png" width="420" alt="Cleanup" />
 </p>
+
+<sub>Screenshots use Brisk's built-in demo mode (<code>Brisk.exe --demo</code>), a sample gaming PC where every button is safe to press and nothing on your computer changes.</sub>
 
 ## Why trust it
 
@@ -103,7 +117,13 @@ On first launch a short welcome screen asks whether to record in the background,
   <img src="docs/screenshots/welcome.png" width="560" alt="Welcome screen" />
 </p>
 
-Command line: `Brisk.exe --page diagnose` (or `boost`, `memory`, `startup`, `cleanup`, `history`) opens on a page; `--tray` starts hidden in the tray.
+Command line:
+
+| Option | What it does |
+|---|---|
+| `--page diagnose` | Opens on a page (`boost`, `memory`, `startup`, `cleanup`, `history` also work). |
+| `--tray` | Starts hidden in the tray (what "Start with Windows" uses). |
+| `--demo` | Demo mode: a sample PC for screenshots or trying Brisk out. Nothing is changed or saved. |
 
 ## Build from source
 
@@ -121,7 +141,7 @@ Portable single exe:
 dotnet publish src/Brisk -c Release -r win-x64 -o dist
 ```
 
-Tests (52 checks): cleanup sandbox (incl. junction escape), startup toggle round-trip, process scanner and I/O counters, every diagnosis rule (CPU, swap, disk, GPU, VRAM, Wi-Fi vs ISP), lag recorder, game boost on throwaway processes incl. crash recovery, GPU counters, power plan parsing:
+Tests (57 checks): cleanup sandbox (incl. junction escape), startup toggle round-trip, process scanner and I/O counters, every diagnosis rule (CPU, swap, disk, GPU, VRAM, Wi-Fi vs ISP), lag recorder, demo-mode safety, game boost on throwaway processes incl. crash recovery, GPU counters, power plan parsing:
 
 ```bash
 dotnet run --project tests/Brisk.Tests

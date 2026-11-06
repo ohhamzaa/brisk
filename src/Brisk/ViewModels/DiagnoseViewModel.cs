@@ -148,7 +148,7 @@ public sealed class DiagnoseViewModel : ObservableObject
                 Issues.Add(new IssueVm
                 {
                     Issue = issue,
-                    CulpritIcon = issue.Culprit?.SamplePid is { } pid ? IconCache.Get(ProcessScanner.GetPath(pid)) : null,
+                    CulpritIcon = issue.Culprit is { } cu ? IconCache.GetOrAvatar(cu.SamplePid is { } pid ? ProcessScanner.GetPath(pid) : null, cu.Name) : null,
                     Fixes = issue.Fixes.Select(f => new FixVm(f.Label, new RelayCommand(() => RunFix(f)))).ToList(),
                 });
             }

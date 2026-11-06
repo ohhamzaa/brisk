@@ -14,7 +14,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private int _boostCheck;
 
     public SystemMonitor Monitor { get; } = new();
-    public LagRecorder Recorder { get; } = new();
+    public LagRecorder Recorder { get; } = new(Demo.On ? Demo.SeedHistory() : null);
     public GameBoost Boost { get; } = new();
     public Settings Settings { get; } = Settings.Load();
 
@@ -80,7 +80,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         Recorder.Enabled = Settings.RecordInBackground;
         Recorder.ActivePlanName = () => Dashboard.ActivePlan?.Name;
         Recorder.Recorded += ev => Ui(() => OnLagRecorded(ev));
-        Monitor.Network.Enabled = Settings.NetworkChecks;
+        Monitor.Network.Enabled = Settings.NetworkChecks && !Demo.On; // demo never pings
 
         NavigateCommand = new RelayCommand(p => { if (p is string s && Enum.TryParse<Page>(s, out var pg)) Page = pg; });
         RestartAsAdminCommand = new RelayCommand(RestartAsAdmin, () => !IsAdmin);

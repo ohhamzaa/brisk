@@ -30,7 +30,8 @@ public static class AppNames
         ["CompatTelRunner.exe"] = "Windows Compatibility Telemetry",
     };
 
-    public static string? KnownName(string image) => Known.TryGetValue(image, out var n) ? n : null;
+    public static string? KnownName(string image) =>
+        (Demo.On ? Demo.NameFor(image) : null) ?? (Known.TryGetValue(image, out var n) ? n : null);
 
     public static string Resolve(string image, int? pid)
     {

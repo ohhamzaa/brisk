@@ -17,7 +17,7 @@ public sealed class StartupItem : ObservableObject
     {
         _owner = owner;
         Entry = entry;
-        Icon = IconCache.Get(entry.ExePath);
+        Icon = IconCache.GetOrAvatar(entry.ExePath, entry.Name);
     }
 
     public bool Enabled

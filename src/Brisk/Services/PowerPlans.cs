@@ -14,6 +14,7 @@ public static partial class PowerPlans
 
     public static List<PowerPlan> List()
     {
+        if (Demo.On) return Demo.PowerPlans();
         var output = Run("/list");
         var plans = new List<PowerPlan>();
         foreach (Match m in PlanLine().Matches(output))
@@ -23,6 +24,7 @@ public static partial class PowerPlans
 
     public static bool SetActive(Guid id)
     {
+        if (Demo.On) { Demo.SetPlan(id); return true; }
         Run($"/setactive {id}");
         return List().Any(p => p.Id == id && p.Active);
     }

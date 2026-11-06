@@ -29,6 +29,13 @@ public sealed class PercentConverter : IValueConverter
     public object ConvertBack(object value, Type t, object parameter, CultureInfo c) => Binding.DoNothing;
 }
 
+/// <summary>0-100 → 0-1, for ScaleTransform progress bars.</summary>
+public sealed class FractionConverter : IValueConverter
+{
+    public object Convert(object value, Type t, object parameter, CultureInfo c) => value is double d ? Math.Clamp(d / 100, 0, 1) : 0.0;
+    public object ConvertBack(object value, Type t, object parameter, CultureInfo c) => Binding.DoNothing;
+}
+
 public sealed class InverseBoolConverter : IValueConverter
 {
     public object Convert(object value, Type t, object parameter, CultureInfo c) => value is not true;
@@ -44,6 +51,7 @@ public sealed class LevelToBrushConverter : IValueConverter
             "danger" => "DangerBrush",
             "warn" => "WarnBrush",
             "info" => "InfoBrush",
+            "purple" => "PurpleBrush",
             _ => "AccentBrush",
         };
         return Application.Current.TryFindResource(key) as Brush ?? Brushes.Gray;

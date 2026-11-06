@@ -14,6 +14,7 @@ public static class MemoryOptimizer
 {
     public static OptimizeResult Optimize(int? skipPid = null)
     {
+        if (Demo.On) { Thread.Sleep(700); return new OptimizeResult(1_840L << 20, 46, false, null); }
         var scanner = new ProcessScanner(); // own instance: don't disturb the monitor's CPU deltas
         var before = scanner.Scan();
         long beforeTotal = before.Sum(p => p.PrivateWorkingSet);

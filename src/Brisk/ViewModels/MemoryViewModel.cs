@@ -98,7 +98,7 @@ public sealed class MemoryViewModel : ObservableObject
             {
                 g = new AppGroup
                 {
-                    Key = s.Key, DisplayName = s.DisplayName, Path = s.Path, Icon = IconCache.Get(s.Path),
+                    Key = s.Key, DisplayName = s.DisplayName, Path = s.Path, Icon = IconCache.GetOrAvatar(s.Path, s.DisplayName),
                     IsProtected = ProcessScanner.Protected.Contains(s.Key) || s.Path == null && s.Background,
                     IsBackground = s.Background,
                 };

@@ -140,6 +140,7 @@ public static class JunkCleaner
     public static void Scan(JunkCategory c, CancellationToken ct = default)
     {
         c.Bytes = 0; c.Files = 0;
+        if (Demo.On) { Thread.Sleep(350); c.Bytes = Demo.JunkBytes(c.Id); c.Files = (int)(c.Bytes / 40_000); return; }
         if (c.IsRecycleBin)
         {
             var info = new NativeMethods.SHQUERYRBINFO { cbSize = System.Runtime.InteropServices.Marshal.SizeOf<NativeMethods.SHQUERYRBINFO>() };
@@ -158,6 +159,7 @@ public static class JunkCleaner
 
     public static CleanResult Clean(JunkCategory c, CancellationToken ct = default)
     {
+        if (Demo.On) { var r = new CleanResult(c.Bytes, c.Files, 0); c.Bytes = 0; Demo.ClearJunk(c.Id); return r; }
         if (c.IsRecycleBin)
         {
             long size = c.Bytes;

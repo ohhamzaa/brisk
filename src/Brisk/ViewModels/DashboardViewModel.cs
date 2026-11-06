@@ -120,10 +120,28 @@ public sealed class DashboardViewModel : ObservableObject
 
         if (_samples == 1)
         {
-            // Start with a flat line at the current value so the graph spans the card from the first second.
-            for (int i = 0; i < HistoryLength - 1; i++) { _cpuHist.Enqueue(cpu); _ramHist.Enqueue(Ram); }
+            if (Demo.On)
+            {
+                // Demo: a believable last minute, so screenshots show real-looking charts straight away.
+                for (int i = HistoryLength - 1; i > 0; i--)
+                {
+                    var past = Demo.NextSample(-i);
+                    _cpuHist.Enqueue(past.Cpu); _ramHist.Enqueue(past.MemUsedPct); _gpuHist.Enqueue(past.GpuPct);
+                }
+            }
+            else
+            {
+                // Start with a flat line at the current value so the graph spans the card from the first second.
+                for (int i = 0; i < HistoryLength - 1; i++) { _cpuHist.Enqueue(cpu); _ramHist.Enqueue(Ram); }
+            }
         }
         UpdateGpuNet(s);
+        UpdateHealth(s);
+        if (!double.IsNaN(s.GpuPct))
+        {
+            if (_gpuHist.Count == 0) for (int i = 0; i < HistoryLength - 1; i++) _gpuHist.Enqueue(s.GpuPct);
+            Push(_gpuHist, s.GpuPct); GpuHistory = _gpuHist.ToArray();
+        }
         Push(_cpuHist, cpu); CpuHistory = _cpuHist.ToArray();
         Push(_ramHist, Ram); RamHistory = _ramHist.ToArray();
 
@@ -189,6 +207,81 @@ public sealed class DashboardViewModel : ObservableObject
     }
 
     public Task ReloadPlans() => LoadPlans();
+
+    // ---------- PC health score ----------
+    private readonly Queue<double> _gpuHist = new();
+    private double[] _gpuHistory = [];
+    public double[] GpuHistory { get => _gpuHistory; private set => Set(ref _gpuHistory, value); }
+    public string GpuName => _gpuName ??= SystemStatsGpuName();
+    private string? _gpuName;
+    private string SystemStatsGpuName() => Demo.On ? "Demo GPU" : _main.Monitor.Last?.Gpu.Name ?? "";
+
+    private double _health = 100, _healthSmooth = -1;
+    public double Health { get => _health; private set { if (Set(ref _health, value)) Raise(nameof(HealthText)); } }
+    public string HealthText => $"{Health:0}";
+
+    private string _healthTitle = "Checking your PC…", _healthReason = "", _healthLevel = "ok";
+    public string HealthTitle { get => _healthTitle; private set => Set(ref _healthTitle, value); }
+    public string HealthReason { get => _healthReason; private set => Set(ref _healthReason, value); }
+    public string HealthLevel { get => _healthLevel; private set => Set(ref _healthLevel, value); }
+
+    private string _chipCpu = "", _chipMem = "", _chipGpu = "", _chipPing = "";
+    public string ChipCpu { get => _chipCpu; private set => Set(ref _chipCpu, value); }
+    public string ChipMem { get => _chipMem; private set => Set(ref _chipMem, value); }
+    public string ChipGpu { get => _chipGpu; private set => Set(ref _chipGpu, value); }
+    public string ChipPing { get => _chipPing; private set => Set(ref _chipPing, value); }
+
+    private string _diskUsedText = "";
+    public string DiskUsedText { get => _diskUsedText; private set => Set(ref _diskUsedText, value); }
+
+    /// <summary>
+    /// 100 minus penalties for things that actually slow a PC down. A maxed GPU costs nothing (that's
+    /// just a game running); swapping, full memory/VRAM, a busy disk, bad ping and throttling do.
+    /// </summary>
+    private void UpdateHealth(Sample s)
+    {
+        var reasons = new List<(double Pen, string Text)>();
+        void Pen(double p, string text) { if (p > 0) reasons.Add((p, text)); }
+
+        Pen((s.Cpu - 70) * 1.2, $"CPU is at {s.Cpu:0}%");
+        Pen((s.MemUsedPct - 75) * 1.6, $"Memory is {s.MemUsedPct:0}% full");
+        if (!double.IsNaN(s.PagesInPerSec) && s.PagesInPerSec >= 600) Pen(10, "Windows is swapping memory to disk");
+        if (!double.IsNaN(s.DiskBusy)) Pen((s.DiskBusy - 60) * 0.8, $"Your disk is {s.DiskBusy:0}% busy");
+        if (s.Gpu.VramTotal > 0) Pen((s.Gpu.VramPct - 90) * 2, $"Video memory is {s.Gpu.VramPct:0}% full");
+        if (s.Net.Probing)
+        {
+            if (double.IsNaN(s.Net.InternetMs)) Pen(20, "You're offline");
+            else Pen((s.Net.InternetMs - 80) * 0.15 + s.Net.InternetLoss * 60, $"Ping is {s.Net.InternetMs:0} ms");
+        }
+        if (!double.IsNaN(s.CpuPerf) && s.CpuPerf < 70 && s.Cpu >= 15) Pen(15, $"The CPU is running at {s.CpuPerf:0}% speed");
+        if (s.DiskTotal > 0) Pen(((s.DiskTotal - s.DiskFree) * 100.0 / s.DiskTotal - 90) * 2, "Your system drive is almost full");
+        if (SystemStats.Uptime.TotalDays >= 7) Pen(5, $"It's been on for {(int)SystemStats.Uptime.TotalDays} days without a restart");
+
+        double raw = Math.Clamp(100 - reasons.Sum(r => r.Pen), 0, 100);
+        _healthSmooth = _healthSmooth < 0 ? raw : _healthSmooth * 0.7 + raw * 0.3; // calm, not jumpy
+        Health = Math.Round(_healthSmooth);
+
+        (HealthTitle, HealthLevel) = Health switch
+        {
+            >= 85 => ("Your PC is running smoothly", "ok"),
+            >= 65 => ("Your PC is a little busy", "warn"),
+            >= 40 => ("Your PC is under pressure", "warn"),
+            _ => ("Your PC is struggling", "danger"),
+        };
+        // One natural sentence: "Memory is 89% full and video memory is 96% full."
+        var top = reasons.OrderByDescending(r => r.Pen).Take(2).Select(r => r.Text).ToList();
+        for (int i = 1; i < top.Count; i++)
+            if (!top[i].StartsWith("CPU") && !top[i].StartsWith("Windows")) top[i] = char.ToLowerInvariant(top[i][0]) + top[i][1..];
+        HealthReason = top.Count == 0
+            ? "Plenty of headroom on CPU, memory, disk and network."
+            : string.Join(" and ", top) + (Health < 85 ? ". A diagnosis shows exactly what's causing it." : ".");
+
+        ChipCpu = $"CPU {s.Cpu:0}%";
+        ChipMem = $"Memory {s.MemUsedPct:0}%";
+        ChipGpu = double.IsNaN(s.GpuPct) ? "" : $"GPU {s.GpuPct:0}%";
+        ChipPing = s.Net.Probing && !double.IsNaN(s.Net.InternetMs) ? $"Ping {s.Net.InternetMs:0} ms" : "";
+        if (s.DiskTotal > 0) DiskUsedText = $"{(s.DiskTotal - s.DiskFree) * 100.0 / s.DiskTotal:0}% used";
+    }
 
     // ---------- GPU + network strip ----------
     private string _gpuText = "-", _gpuSub = "", _vramText = "-", _vramSub = "", _pingText = "-", _pingSub = "", _trafficText = "-", _trafficSub = "";

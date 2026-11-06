@@ -36,46 +36,88 @@
         <!-- ===== sidebar ===== -->
         <Border Background="{StaticResource SidebarBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
             <DockPanel Margin="14,0,14,16">
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,16,0,28">
-                    <Border Width="30" Height="30" CornerRadius="8" Background="#090B0C" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
-                        <Path Data="M 3 15 L 9 15 L 11.5 10.5 L 14.5 21 L 17.5 6 L 20 15 L 25 15" Stroke="{StaticResource AccentBrush}"
-                              StrokeThickness="2" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                              Stretch="Uniform" Margin="5,7" />
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,18,0,12">
+                    <Border Width="32" Height="32" CornerRadius="9" Background="#090B0C" BorderBrush="{StaticResource CardEdgeBrush}" BorderThickness="1">
+                        <Path Style="{StaticResource PulseLine}" StrokeThickness="2" Margin="6,8" />
                     </Border>
-                    <TextBlock Text="Brisk" FontFamily="{StaticResource DisplayFont}" FontSize="19" FontWeight="SemiBold"
-                               Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" Margin="10,0,0,1" />
-                </StackPanel>
-
-                <StackPanel DockPanel.Dock="Bottom">
-                    <Border Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="12,10" Margin="0,0,0,10"
-                            Visibility="{Binding IsAdmin, Converter={StaticResource Hidden}}">
-                        <StackPanel>
-                            <TextBlock Text="Limited mode" Style="{StaticResource H2}" FontSize="12.5" />
-                            <TextBlock Text="Some cleanups and all-user startup apps need admin." Style="{StaticResource Dim}"
-                                       FontSize="11.5" Margin="0,3,0,8" />
-                            <Button Content="Restart as admin" Style="{StaticResource BaseButton}" Padding="10,6" FontSize="12"
-                                    Command="{Binding RestartAsAdminCommand}" />
-                        </StackPanel>
-                    </Border>
-                    <StackPanel Orientation="Horizontal" Margin="6,0,0,0">
-                        <Ellipse Width="7" Height="7" Fill="{StaticResource AccentBrush}"
-                                 Visibility="{Binding IsAdmin, Converter={StaticResource Visible}}" Margin="0,0,7,0" />
-                        <TextBlock Text="{Binding Version}" Style="{StaticResource Label}" FontWeight="Normal" />
-                        <TextBlock Text="  ·  Admin" Style="{StaticResource Label}" Foreground="{StaticResource AccentBrush}"
-                                   Visibility="{Binding IsAdmin, Converter={StaticResource Visible}}" />
+                    <StackPanel VerticalAlignment="Center" Margin="11,0,0,0">
+                        <TextBlock Text="Brisk" FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextBrush}" />
+                        <TextBlock Text="PC performance" Style="{StaticResource Label}" FontWeight="Normal" FontSize="10.5" Margin="0,-1,0,0" />
                     </StackPanel>
                 </StackPanel>
 
+                <StackPanel DockPanel.Dock="Bottom">
+                    <!-- black-box status -->
+                    <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource CardEdgeBrush}" BorderThickness="1"
+                            CornerRadius="10" Padding="12,11" Margin="0,0,0,10" Cursor="Hand" DataContext="{Binding History}">
+                        <Border.InputBindings>
+                            <MouseBinding MouseAction="LeftClick" Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                          CommandParameter="History" />
+                        </Border.InputBindings>
+                        <DockPanel>
+                            <Grid DockPanel.Dock="Left" Width="14" Height="14" Margin="0,2,10,0" VerticalAlignment="Top">
+                                <Ellipse Stroke="{StaticResource AccentBrush}" StrokeThickness="1.2" Opacity="0" c:Loop.Kind="ripple"
+                                         Visibility="{Binding RecordInBackground, Converter={StaticResource Visible}}" />
+                                <Ellipse Width="8" Height="8">
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse">
+                                            <Setter Property="Fill" Value="{StaticResource TextFaintBrush}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding RecordInBackground}" Value="True">
+                                                    <Setter Property="Fill" Value="{StaticResource AccentBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Ellipse.Style>
+                                </Ellipse>
+                            </Grid>
+                            <StackPanel>
+                                <TextBlock FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Recording is off" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding RecordInBackground}" Value="True">
+                                                    <Setter Property="Text" Value="Watching for lag" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="{Binding Summary}" Style="{StaticResource Dim}" FontSize="11" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                    <DockPanel Margin="4,0,0,0">
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding Version}" Style="{StaticResource Label}" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,4,0" />
+                        <Button Style="{StaticResource GhostButton}" BorderThickness="0" Padding="6,4" HorizontalAlignment="Left"
+                                Command="{Binding RestartAsAdminCommand}" Visibility="{Binding IsAdmin, Converter={StaticResource Hidden}}"
+                                ToolTip="Some cleanups, all-user startup apps and clearing the standby cache need admin.">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xEA18;" Style="{StaticResource Icon}" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,7,0" />
+                                <TextBlock Text="Run as admin" FontSize="12" FontWeight="Normal" Foreground="{StaticResource TextDimBrush}" />
+                            </StackPanel>
+                        </Button>
+                        <StackPanel Orientation="Horizontal" Visibility="{Binding IsAdmin, Converter={StaticResource Visible}}" Margin="6,0,0,0">
+                            <TextBlock Text="&#xEA18;" Style="{StaticResource Icon}" FontSize="12" Foreground="{StaticResource AccentBrush}" Margin="0,0,7,0" />
+                            <TextBlock Text="Admin" Style="{StaticResource Label}" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </DockPanel>
+                </StackPanel>
+
                 <StackPanel>
-                    <RadioButton Style="{StaticResource NavItem}" Content="Overview" Tag="&#xE80F;"
+                    <RadioButton Style="{StaticResource NavItem}" Content="Overview" Tag="&#xE80F;" Margin="0,8,0,2"
                                  Command="{Binding NavigateCommand}" CommandParameter="Dashboard"
                                  IsChecked="{Binding Page, Mode=OneWay, Converter={StaticResource EnumEquals}, ConverterParameter=Dashboard}" />
+                    <TextBlock Text="FIX IT" Style="{StaticResource NavSection}" />
                     <RadioButton Style="{StaticResource NavItem}" Content="Why so slow?" Tag="&#xE9D9;"
                                  Command="{Binding NavigateCommand}" CommandParameter="Diagnose"
                                  IsChecked="{Binding Page, Mode=OneWay, Converter={StaticResource EnumEquals}, ConverterParameter=Diagnose}" />
                     <RadioButton Style="{StaticResource NavItem}" Content="Game boost" Tag="&#xE7FC;"
                                  Command="{Binding NavigateCommand}" CommandParameter="Boost"
                                  IsChecked="{Binding Page, Mode=OneWay, Converter={StaticResource EnumEquals}, ConverterParameter=Boost}" />
+                    <TextBlock Text="CLEAN UP" Style="{StaticResource NavSection}" />
                     <RadioButton Style="{StaticResource NavItem}" Content="Memory" Tag="&#xE964;"
                                  Command="{Binding NavigateCommand}" CommandParameter="Memory"
                                  IsChecked="{Binding Page, Mode=OneWay, Converter={StaticResource EnumEquals}, ConverterParameter=Memory}" />
@@ -85,6 +127,7 @@
                     <RadioButton Style="{StaticResource NavItem}" Content="Cleanup" Tag="&#xE74D;"
                                  Command="{Binding NavigateCommand}" CommandParameter="Cleanup"
                                  IsChecked="{Binding Page, Mode=OneWay, Converter={StaticResource EnumEquals}, ConverterParameter=Cleanup}" />
+                    <TextBlock Text="HISTORY" Style="{StaticResource NavSection}" />
                     <RadioButton Style="{StaticResource NavItem}" Content="Lag history" Tag="&#xE81C;"
                                  Command="{Binding NavigateCommand}" CommandParameter="History"
                                  IsChecked="{Binding Page, Mode=OneWay, Converter={StaticResource EnumEquals}, ConverterParameter=History}" />
