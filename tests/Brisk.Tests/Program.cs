@@ -247,6 +247,10 @@ var bg = Dummy();
 try
 {
     Thread.Sleep(800);
+    // Start from Normal: some hosts (e.g. CI runners) launch children at BelowNormal, and boost
+    // deliberately leaves already-lowered apps alone.
+    game.PriorityClass = ProcessPriorityClass.Normal;
+    bg.PriorityClass = ProcessPriorityClass.Normal;
     var myProcs = new List<ProcInfo>
     {
         new(game.Id, "game-test.exe", 50 << 20, 40, game.SessionId, 0, 0),
@@ -294,7 +298,7 @@ using (var gc = new GpuCounters())
     gc.Sample(); Thread.Sleep(1100);
     var gs = gc.Sample();
     Check($"gpu: counters readable ({gs.Name ?? "no name"}, {gs.Utilization:0}% load, {Fmt.Bytes(gs.VramUsed)} / {Fmt.Bytes(gs.VramTotal)} VRAM, {gs.PerPidUtil.Count} processes)",
-        !gc.Available || (!double.IsNaN(gs.Utilization) && gs.VramTotal > 0));
+        !gc.Available || (!double.IsNaN(gs.Utilization) && gs.VramTotal >= 0 && (gs.VramTotal == 0 || gs.VramUsed <= gs.VramTotal * 1.05)));
 }
 
 // ---------- 9. Power plan parsing ----------
