@@ -17,7 +17,15 @@
     <RootNamespace>Brisk</RootNamespace>
     <Version>0.1.0</Version>
     <Product>Brisk</Product>
-    <Description>Fast, honest PC performance tool for Windows.</Description>
+    <Description>Brisk: find out why your PC is slow</Description>
+    <Authors>Hamza</Authors>
+    <Company>Brisk</Company>
+    <Copyright>Copyright © 2026 Hamza. MIT License.</Copyright>
+    <RepositoryUrl>https://github.com/ohhamzaa/brisk</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/ohhamzaa/brisk</PackageProjectUrl>
+    <NeutralLanguage>en</NeutralLanguage>
+    <!-- Source-link the exact commit into the exe's version info. -->
+    <IncludeSourceRevisionInInformationalVersion>true</IncludeSourceRevisionInInformationalVersion>
     <Platforms>x64;ARM64</Platforms>
     <PlatformTarget Condition="'$(PlatformTarget)' == ''">x64</PlatformTarget>
   </PropertyGroup>

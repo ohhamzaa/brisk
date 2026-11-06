@@ -1,4 +1,4 @@
-﻿<p align="center">
+<p align="center">
   <img src="src/Brisk/Assets/brisk-256.png" width="88" alt="Brisk logo" />
 </p>
 
@@ -11,7 +11,15 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><b>â¬‡ Download for Windows</b></a>  Â·  free, open source, no ads, no account
+  <a href="https://github.com/ohhamzaa/brisk/actions/workflows/build.yml"><img src="https://github.com/ohhamzaa/brisk/actions/workflows/build.yml/badge.svg" alt="Build" /></a>
+  <a href="https://github.com/ohhamzaa/brisk/releases/latest"><img src="https://img.shields.io/github/v/release/ohhamzaa/brisk?label=release&color=5ee08a" alt="Latest release" /></a>
+  <img src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0e1012" alt="Windows 10 and 11" />
+  <img src="https://img.shields.io/badge/.NET-10-512bd4" alt=".NET 10" />
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/ohhamzaa/brisk?color=blue" alt="MIT license" /></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/ohhamzaa/brisk/releases/latest"><b>⬇ Download for Windows</b></a>  ·  free, open source, no ads, no account
 </p>
 
 <p align="center">
@@ -63,7 +71,7 @@ Pick your game and press **Boost**. Brisk puts background apps into Windows **Ef
 | **Overview** | Live CPU, memory and storage with history graphs, your busiest apps, plain-English recommendations, and one-click power plan switching. |
 | **Memory** | Every app grouped into one row (40 `chrome.exe` processes become one "Google Chrome" row) with real private memory and CPU. Trim or end any app. Core Windows processes are protected. |
 | **Startup apps** | Everything that launches at sign-in, one switch each. Same settings Task Manager uses, so nothing is deleted and it's all reversible. |
-| **Cleanup** | Temp files, browser caches (Chrome, Edge, Brave, Opera, Vivaldi, Firefox), thumbnails, crash dumps, Windows Update leftovers, dev caches (npm, pip, NuGetâ€¦), Recycle Bin. You pick what goes. |
+| **Cleanup** | Temp files, browser caches (Chrome, Edge, Brave, Opera, Vivaldi, Firefox), thumbnails, crash dumps, Windows Update leftovers, dev caches (npm, pip, NuGet…), Recycle Bin. You pick what goes. |
 
 <p align="center">
   <img src="docs/screenshots/overview.png" width="420" alt="Overview" />
@@ -82,10 +90,10 @@ Most "PC booster" apps are snake oil. They "free" RAM that Windows was deliberat
 
 ## Install
 
-1. Download `Brisk.exe` from the [latest release](../../releases/latest).
+1. Download `Brisk.exe` from the [latest release](https://github.com/ohhamzaa/brisk/releases/latest).
 2. Run it. One portable file, nothing to install.
 
-> Windows SmartScreen may warn about a new, unsigned app. Click **More info â†’ Run anyway**. Every release is built by GitHub Actions straight from this repo.
+> Windows SmartScreen may warn about a new, unsigned app. Click **More info → Run anyway**. Every release is built by GitHub Actions straight from this repo.
 
 Brisk runs without admin. A few things (Windows temp/update cleanup, all-user startup apps, clearing the standby cache) need admin: use **Restart as admin** in the sidebar.
 
@@ -102,7 +110,7 @@ Command line: `Brisk.exe --page diagnose` (or `boost`, `memory`, `startup`, `cle
 Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download) on Windows.
 
 ```bash
-git clone https://github.com/<you>/brisk.git
+git clone https://github.com/ohhamzaa/brisk.git
 cd brisk
 dotnet run --project src/Brisk
 ```
@@ -131,7 +139,7 @@ Per-part cost of one monitor tick: `dotnet run --project tests/Brisk.Tests -c Re
 | Network lag | ICMP ping every 2 s to the default gateway and 1.1.1.1; rolling 20 s average, loss and jitter. |
 | Game boost | `SetPriorityClass` + `SetProcessInformation(ProcessPowerThrottling)` (EcoQoS / Efficiency mode), state persisted to `%LOCALAPPDATA%\Brisk\boost-state.json` and checked against process start times before restoring. |
 | Diagnosis | `Diagnoser.Analyze()`: a pure function over 10 one-second samples, with rule thresholds plus a catalogue of known Windows tasks. The same code labels black-box events. |
-| Black box | `LagRecorder`: a second counts as "hot" if CPU â‰¥ 90%, disk â‰¥ 90% busy, RAM â‰¤ 6% free or heavy swapping; 5+ hot seconds become an event. Saved to `%LOCALAPPDATA%\Brisk\lag-history.json`. |
+| Black box | `LagRecorder`: a second counts as "hot" if CPU ≥ 90%, disk ≥ 90% busy, RAM ≤ 6% free or heavy swapping; 5+ hot seconds become an event. Saved to `%LOCALAPPDATA%\Brisk\lag-history.json`. |
 | Free up RAM | `EmptyWorkingSet` on background processes; as admin, `NtSetSystemInformation(MemoryPurgeLowPriorityStandbyList)`. |
 | Startup | `Run` keys + Startup folders, toggled via `Explorer\StartupApproved` (exactly what Task Manager writes). |
 
@@ -139,13 +147,19 @@ Per-part cost of one monitor tick: `dotnet run --project tests/Brisk.Tests -c Re
 
 Issues and PRs welcome. Great first contributions:
 
-- **Explanations for more apps** in [`AppNames.cs`](src/Brisk/Services/AppNames.cs) (game launchers, antivirus suites, backup toolsâ€¦)
+- **Explanations for more apps** in [`AppNames.cs`](src/Brisk/Services/AppNames.cs) (game launchers, antivirus suites, backup tools…)
 - More junk locations in [`JunkCleaner.cs`](src/Brisk/Services/JunkCleaner.cs)
-- New diagnosis rules (GPU-bound, network-boundâ€¦) with a test in `tests/Brisk.Tests`
+- New diagnosis rules (GPU-bound, network-bound…) with a test in `tests/Brisk.Tests`
 - Translations
 
 Keep the spirit: **only add things that really make a PC faster or easier to understand, and never exaggerate results.**
 
+## Project
+
+- [Changelog](CHANGELOG.md)
+- [Contributing guide](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) © 2026 Hamza

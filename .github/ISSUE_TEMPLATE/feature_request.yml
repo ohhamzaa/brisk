@@ -1,0 +1,22 @@
+name: Feature or diagnosis idea
+description: Suggest a feature, or something Brisk should be able to detect and explain.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: For example, "My game stutters and Brisk says everything is fine."
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What should Brisk do?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: How could Brisk detect it?
+      description: Optional. Any counter, API or app name you know of that shows the problem.

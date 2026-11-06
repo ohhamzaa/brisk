@@ -1,4 +1,4 @@
-﻿namespace Brisk.Views;
+namespace Brisk.Views;
 
 public partial class DiagnoseView : System.Windows.Controls.UserControl
 {

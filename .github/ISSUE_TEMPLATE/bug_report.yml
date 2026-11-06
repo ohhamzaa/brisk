@@ -1,0 +1,51 @@
+name: Bug report
+description: Something in Brisk doesn't work, or shows the wrong thing.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open Brisk
+        2. Go to ...
+        3. Click ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Brisk version
+      description: Shown at the bottom of the sidebar, e.g. v0.1.0.
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: Windows 11 24H2
+    validations:
+      required: true
+  - type: dropdown
+    id: admin
+    attributes:
+      label: Running as admin?
+      options: ["No", "Yes", "Not sure"]
+  - type: textarea
+    id: log
+    attributes:
+      label: Error log
+      description: If it exists, paste the end of `%TEMP%\brisk-error.log`.
+      render: text
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Optional, but very helpful for UI problems.
